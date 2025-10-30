@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { 
   Bell, BellRing, AlertTriangle, X, MapPin, Clock, TrendingUp,
   Droplets, Sun, Wind, Flame, Zap, AlertCircle, Thermometer,
-  CloudRain, Tornado, Eye, Volume2
+  CloudRain, Tornado, Eye, Volume2, VolumeX
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -162,18 +162,100 @@ interface RealClimateAlertsProps {
 }
 
 export function RealClimateAlerts({ location }: RealClimateAlertsProps = {}) {
-  const [alerts, setAlerts] = useState<ClimateAlert[]>(() => generateClimateAlerts())
+  const [alerts, setAlerts] = useState<ClimateAlert[]>([])
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all')
+  const [isLoading, setIsLoading] = useState(true)
+  const [voiceEnabled, setVoiceEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('voiceAlertsEnabled') === 'true'
+  })
   const [spokenAlertIds, setSpokenAlertIds] = useState<Set<string>>(new Set())
 
-  const filteredAlerts = alerts.filter(alert => {
-    if (selectedSeverity === 'all') return true
-    return alert.severity === selectedSeverity
-  })
-
-  // Voice announcement for alerts shown on THIS page only
+  // Fetch REAL alerts from APIs
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return
+    if (!location) {
+      setAlerts(generateClimateAlerts()) // Fallback to static alerts if no location
+      setIsLoading(false)
+      return
+    }
+
+    const fetchRealAlerts = async () => {
+      setIsLoading(true)
+      try {
+        // Import the voice alert system to get real alerts
+        const { fetchAllCriticalAlerts } = await import('@/lib/voice-alert-system')
+        
+        const realAlerts = await fetchAllCriticalAlerts(
+          location.lat,
+          location.lon,
+          location.name
+        )
+
+        // Convert to ClimateAlert format
+        const convertedAlerts: ClimateAlert[] = realAlerts.map((alert, index) => {
+          let type: ClimateAlert['type'] = 'storm'
+          let severity: ClimateAlert['severity'] = 'medium'
+          
+          // Map severity
+          if (alert.severity === 'Extreme') severity = 'critical'
+          else if (alert.severity === 'Severe') severity = 'high'
+          else if (alert.severity === 'Moderate') severity = 'medium'
+          else severity = 'low'
+
+          // Map type
+          if ('event' in alert) {
+            // Weather alert
+            const event = alert.event.toLowerCase()
+            if (event.includes('heat')) type = 'heatwave'
+            else if (event.includes('flood')) type = 'flood'
+            else if (event.includes('storm') || event.includes('thunder')) type = 'storm'
+            else if (event.includes('wind')) type = 'storm'
+          } else if ('category' in alert) {
+            // Disaster alert
+            type = alert.category as ClimateAlert['type']
+          } else if ('riskType' in alert) {
+            // Risk alert
+            type = alert.riskType as ClimateAlert['type']
+          } else if ('aqi' in alert) {
+            type = 'air_quality'
+          }
+
+          return {
+            id: `real-alert-${index}-${Date.now()}`,
+            type,
+            severity,
+            title: 'headline' in alert ? alert.headline : 
+                   'title' in alert ? alert.title : 'Climate Alert',
+            message: alert.description,
+            location: alert.location || location.name,
+            timestamp: alert.effective,
+            expires: alert.expires,
+            source: 'source' in alert ? alert.source : 'Climate API',
+            actionRequired: severity === 'critical' || severity === 'high',
+            category: 'weather',
+          }
+        })
+
+        // If no real alerts, show some static ones as fallback
+        setAlerts(convertedAlerts.length > 0 ? convertedAlerts : generateClimateAlerts())
+      } catch (error) {
+        console.error('Error fetching real alerts:', error)
+        setAlerts(generateClimateAlerts()) // Fallback to static alerts
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchRealAlerts()
+    
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchRealAlerts, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [location])
+
+  // Voice announcement for EXTREME alerts only
+  useEffect(() => {
+    if (!voiceEnabled || typeof window === 'undefined' || !window.speechSynthesis) return
     
     // Only announce critical alerts that haven't been spoken yet
     const unspokenCriticalAlerts = alerts.filter(
@@ -205,7 +287,19 @@ export function RealClimateAlerts({ location }: RealClimateAlertsProps = {}) {
       clearTimeout(timer)
       window.speechSynthesis.cancel()
     }
-  }, [alerts, spokenAlertIds])
+  }, [alerts, spokenAlertIds, voiceEnabled])
+
+  // Save voice setting
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('voiceAlertsEnabled', voiceEnabled.toString())
+    }
+  }, [voiceEnabled])
+
+  const filteredAlerts = alerts.filter(alert => {
+    if (selectedSeverity === 'all') return true
+    return alert.severity === selectedSeverity
+  })
 
   const dismissAlert = (alertId: string) => {
     setAlerts(prev => prev.filter(alert => alert.id !== alertId))
@@ -238,6 +332,52 @@ export function RealClimateAlerts({ location }: RealClimateAlertsProps = {}) {
 
   return (
     <div className="space-y-6">
+      {/* Voice Control Banner */}
+      <Card className="border-blue-500 bg-blue-500/10 dark:bg-blue-500/20">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Volume2 className={`h-5 w-5 ${voiceEnabled ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`} />
+              <div>
+                <p className="font-semibold text-foreground">Voice Alerts</p>
+                <p className="text-sm text-muted-foreground">
+                  {voiceEnabled ? 'Critical alerts will be announced automatically' : 'Voice announcements disabled'}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant={voiceEnabled ? "default" : "outline"}
+              onClick={() => setVoiceEnabled(!voiceEnabled)}
+              className="gap-2"
+            >
+              {voiceEnabled ? (
+                <>
+                  <Volume2 className="h-4 w-4" />
+                  Enabled
+                </>
+              ) : (
+                <>
+                  <VolumeX className="h-4 w-4" />
+                  Disabled
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Loading State */}
+      {isLoading && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-center gap-3 py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="text-muted-foreground">Fetching real-time climate alerts for {location?.name || 'your location'}...</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Voice Announced Alerts Section - showing ONLY alerts from this page */}
       {spokenAlerts.length > 0 && (
         <Card className="border-purple-500 bg-purple-500/10 dark:bg-purple-500/20">
@@ -247,7 +387,7 @@ export function RealClimateAlerts({ location }: RealClimateAlertsProps = {}) {
               Voice Announced Alerts ({spokenAlerts.length})
             </CardTitle>
             <CardDescription>
-              Alerts from this page that were announced via voice
+              Critical alerts that were announced via voice
             </CardDescription>
           </CardHeader>
           <CardContent>
