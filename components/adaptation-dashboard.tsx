@@ -64,15 +64,16 @@ export function AdaptationDashboard({ location }: AdaptationDashboardProps) {
     regeneratePlan,
   } = useAdaptationPlan(location);
 
-  const [showOnboarding, setShowOnboarding] = useState(!hasCompletedOnboarding);
+  // Only show onboarding if explicitly set OR if no plan exists after loading
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const handleOnboardingComplete = async (profile: UserProfile) => {
     await createPlan(profile);
     setShowOnboarding(false);
   };
 
-  // If user hasn't completed onboarding, show the questionnaire
-  if (showOnboarding || !hasCompletedOnboarding) {
+  // If user hasn't completed onboarding AND no plan exists, show the questionnaire
+  if (showOnboarding || (!hasCompletedOnboarding && !plan && !isGenerating)) {
     return (
       <AdaptationOnboarding
         location={location}

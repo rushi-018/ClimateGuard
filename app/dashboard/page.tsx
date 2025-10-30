@@ -124,7 +124,11 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="alerts" className="space-y-6">
-            <RealClimateAlerts />
+            <RealClimateAlerts location={{
+              name: selectedLocation.name,
+              lat: selectedLocation.lat,
+              lon: selectedLocation.lon
+            }} />
             
             {/* Voice Assistant Section */}
             <Card>

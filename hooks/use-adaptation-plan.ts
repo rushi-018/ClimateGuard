@@ -53,7 +53,9 @@ export function useAdaptationPlan(location?: {
         parsedPlan.lastUpdated = new Date(parsedPlan.lastUpdated);
         parsedPlan.actions = parsedPlan.actions.map((action: any) => ({
           ...action,
-          completedAt: action.completedAt ? new Date(action.completedAt) : undefined,
+          completedAt: action.completedAt
+            ? new Date(action.completedAt)
+            : undefined,
         }));
         setPlan(parsedPlan);
       }
@@ -108,7 +110,8 @@ export function useAdaptationPlan(location?: {
         setHasCompletedOnboarding(true);
         return newPlan;
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to generate plan";
+        const message =
+          err instanceof Error ? err.message : "Failed to generate plan";
         setError(message);
         console.error("Error generating adaptation plan:", err);
         throw err;
@@ -165,7 +168,9 @@ export function useAdaptationPlan(location?: {
         progress: {
           completedActions: completedCount,
           totalActions: plan.actions.length,
-          percentComplete: Math.round((completedCount / plan.actions.length) * 100),
+          percentComplete: Math.round(
+            (completedCount / plan.actions.length) * 100
+          ),
         },
       };
 
@@ -280,7 +285,8 @@ export function useAdaptationPlan(location?: {
       const newPlan = await generateAdaptationPlan(profile);
       setPlan(newPlan);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to regenerate plan";
+      const message =
+        err instanceof Error ? err.message : "Failed to regenerate plan";
       setError(message);
       console.error("Error regenerating adaptation plan:", err);
     } finally {
@@ -316,7 +322,8 @@ export function useAdaptationPlan(location?: {
         lastDate = action.completedAt;
       } else {
         const daysDiff = Math.floor(
-          (lastDate.getTime() - action.completedAt.getTime()) / (1000 * 60 * 60 * 24)
+          (lastDate.getTime() - action.completedAt.getTime()) /
+            (1000 * 60 * 60 * 24)
         );
 
         if (daysDiff <= 7) {
@@ -390,7 +397,11 @@ export function useAdaptationPlan(location?: {
     getAchievements,
 
     // Computed values
-    progress: plan?.progress || { completedActions: 0, totalActions: 0, percentComplete: 0 },
+    progress: plan?.progress || {
+      completedActions: 0,
+      totalActions: 0,
+      percentComplete: 0,
+    },
     nextAction: getNextAction(),
     achievements: getAchievements(),
     streak: getStreak(),

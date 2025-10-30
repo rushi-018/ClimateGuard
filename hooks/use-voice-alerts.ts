@@ -216,31 +216,47 @@ export function useVoiceAlerts(location?: {
     }));
   }, []);
 
-  // Start polling
+  // Start polling ONLY when explicitly enabled
   useEffect(() => {
-    if (state.settings.enabled && location) {
-      // Initial check
-      checkForAlerts();
-
-      // Set up polling interval
-      pollingIntervalRef.current = setInterval(
-        checkForAlerts,
-        state.settings.checkInterval
-      );
-
-      // Cleanup old history once per session
-      cleanupAlertHistory();
-
-      return () => {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-        }
-      };
+    // Don't start polling if disabled
+    if (!state.settings.enabled || !location) {
+      // Clear any existing interval
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      return;
     }
+
+    // Enabled and have location - start polling
+    // Initial check after a small delay to ensure user interaction
+    const initialCheckTimeout = setTimeout(() => {
+      if (userInteracted) {
+        checkForAlerts();
+      }
+    }, 3000);
+
+    // Set up polling interval
+    pollingIntervalRef.current = setInterval(
+      checkForAlerts,
+      state.settings.checkInterval
+    );
+
+    // Cleanup old history once per session
+    cleanupAlertHistory();
+
+    return () => {
+      clearTimeout(initialCheckTimeout);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
   }, [
     state.settings.enabled,
     state.settings.checkInterval,
     location,
+    userInteracted,
     checkForAlerts,
   ]);
 

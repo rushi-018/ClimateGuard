@@ -9,9 +9,10 @@ import { Separator } from "@/components/ui/separator"
 import { 
   Bell, BellRing, AlertTriangle, X, MapPin, Clock, TrendingUp,
   Droplets, Sun, Wind, Flame, Zap, AlertCircle, Thermometer,
-  CloudRain, Tornado, Eye
+  CloudRain, Tornado, Eye, Volume2
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useVoiceAlerts } from "@/hooks/use-voice-alerts"
 
 interface ClimateAlert {
   id: string
@@ -153,9 +154,21 @@ const generateClimateAlerts = (): ClimateAlert[] => {
   }))
 }
 
-export function RealClimateAlerts() {
+interface RealClimateAlertsProps {
+  location?: {
+    name: string
+    lat: number
+    lon: number
+  }
+}
+
+export function RealClimateAlerts({ location }: RealClimateAlertsProps = {}) {
   const [alerts, setAlerts] = useState<ClimateAlert[]>(() => generateClimateAlerts())
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all')
+  
+  // Get voice alerts for coordination
+  const voiceAlertsHook = location ? useVoiceAlerts(location) : null
+  const voiceAlertHistory = voiceAlertsHook?.history || []
 
   const filteredAlerts = alerts.filter(alert => {
     if (selectedSeverity === 'all') return true
@@ -190,6 +203,50 @@ export function RealClimateAlerts() {
 
   return (
     <div className="space-y-6">
+      {/* Voice Alerts Section */}
+      {voiceAlertHistory.length > 0 && (
+        <Card className="border-purple-500 bg-purple-500/10 dark:bg-purple-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+              <Volume2 className="h-5 w-5" />
+              Voice Announced Alerts ({voiceAlertHistory.length})
+            </CardTitle>
+            <CardDescription>
+              Recent alerts that were announced via voice system
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[200px]">
+              <div className="space-y-2">
+                {voiceAlertHistory.slice(0, 5).map((item, index) => (
+                  <div
+                    key={index}
+                    className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground mb-1">
+                          {item.text.split('.')[0]}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>
+                            {new Date(item.timestamp).toLocaleString()}
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            Announced
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+      
       {/* Alert Statistics */}
       <div className="grid grid-cols-4 gap-4">
         <Card className="border-red-500 bg-red-500/10 dark:bg-red-500/20">

@@ -117,7 +117,8 @@ export async function analyzeLocationRisks(location: {
       .map(([risk, _]) => risk);
 
     // Determine trends (simplified - in production, compare historical data)
-    const trends: { [key: string]: "increasing" | "stable" | "decreasing" } = {};
+    const trends: { [key: string]: "increasing" | "stable" | "decreasing" } =
+      {};
     Object.keys(risks).forEach((risk) => {
       // Simplified: high risk = increasing, medium = stable, low = decreasing
       if (risks[risk] > 70) trends[risk] = "increasing";
@@ -150,15 +151,33 @@ function getFallbackRisks(city: string): {
   } = {
     Phoenix: {
       primary: ["heatwave", "drought", "wildfire"],
-      severity: { heatwave: 85, drought: 80, wildfire: 70, flood: 15, storm: 25 },
+      severity: {
+        heatwave: 85,
+        drought: 80,
+        wildfire: 70,
+        flood: 15,
+        storm: 25,
+      },
     },
     Miami: {
       primary: ["flood", "storm", "heatwave"],
-      severity: { flood: 80, storm: 75, heatwave: 60, drought: 20, wildfire: 10 },
+      severity: {
+        flood: 80,
+        storm: 75,
+        heatwave: 60,
+        drought: 20,
+        wildfire: 10,
+      },
     },
     "New York": {
       primary: ["flood", "storm"],
-      severity: { flood: 65, storm: 70, heatwave: 45, drought: 30, wildfire: 15 },
+      severity: {
+        flood: 65,
+        storm: 70,
+        heatwave: 45,
+        drought: 30,
+        wildfire: 15,
+      },
     },
   };
 
@@ -289,7 +308,9 @@ Return ONLY valid JSON array of actions, no markdown formatting:
     // Clean up response (remove markdown code blocks if present)
     let cleanedResponse = response.trim();
     if (cleanedResponse.startsWith("```json")) {
-      cleanedResponse = cleanedResponse.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+      cleanedResponse = cleanedResponse
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "");
     } else if (cleanedResponse.startsWith("```")) {
       cleanedResponse = cleanedResponse.replace(/```\n?/g, "");
     }
@@ -300,7 +321,12 @@ Return ONLY valid JSON array of actions, no markdown formatting:
     return actions.map((action: any, index: number) => ({
       id: `action-${Date.now()}-${index}`,
       ...action,
-      priority: action.category === "urgent" ? 10 : action.category === "important" ? 5 : 3,
+      priority:
+        action.category === "urgent"
+          ? 10
+          : action.category === "important"
+          ? 5
+          : 3,
       completed: false,
     }));
   } catch (error) {
