@@ -83,7 +83,7 @@ class AlertService {
     email: false,
     voice: true,
     globalSeverityFilter: "medium",
-    autoRefresh: true,
+    autoRefresh: false, // Disabled - alerts are now handled directly in the alerts page
     refreshInterval: 30000, // 30 seconds
     maxAlertsDisplay: 20,
     notificationDuration: 5,
@@ -97,7 +97,8 @@ class AlertService {
   constructor() {
     this.initializeAudio();
     this.initializeSpeech();
-    this.startAutoRefresh();
+    // Auto-refresh disabled - alerts are now handled directly in the alerts page
+    // this.startAutoRefresh();
     this.requestNotificationPermission();
   }
 

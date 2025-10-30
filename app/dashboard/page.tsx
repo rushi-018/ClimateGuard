@@ -18,7 +18,6 @@ const LocationIntelligencePanel = lazy(() => import('@/components/location-intel
 const EconomicIntelligenceDashboard = lazy(() => import('@/components/economic-intelligence-dashboard').then(module => ({ default: module.EconomicIntelligenceDashboard })))
 const ActionRecommendationsDashboard = lazy(() => import('@/components/action-recommendations-dashboard').then(module => ({ default: module.ActionRecommendationsDashboard })))
 const RiskForecast = lazy(() => import('@/components/risk-forecast').then(module => ({ default: module.RiskForecast })))
-const VoiceAlertBanner = lazy(() => import('@/components/voice-alert-banner').then(module => ({ default: module.VoiceAlertBanner })))
 const AdaptationDashboard = lazy(() => import('@/components/adaptation-dashboard').then(module => ({ default: module.AdaptationDashboard })))
 const DisasterPredictor = lazy(() => import('@/components/disaster-predictor').then(module => ({ default: module.DisasterPredictor })))
 
@@ -51,11 +50,6 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
-      {/* Voice Alert Banner disabled - alerts are now handled directly in the alerts page */}
-      {/* <Suspense fallback={null}>
-        <VoiceAlertBanner location={selectedLocation} />
-      </Suspense> */}
       
       <div className="container mx-auto px-4 py-8 pt-24">
         <div className="mb-8">
