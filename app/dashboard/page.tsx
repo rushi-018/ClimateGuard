@@ -52,10 +52,10 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      {/* Intelligent Voice Alert System - Checks for real critical alerts every 2 minutes */}
-      <Suspense fallback={null}>
+      {/* Voice Alert Banner disabled - alerts are now handled directly in the alerts page */}
+      {/* <Suspense fallback={null}>
         <VoiceAlertBanner location={selectedLocation} />
-      </Suspense>
+      </Suspense> */}
       
       <div className="container mx-auto px-4 py-8 pt-24">
         <div className="mb-8">

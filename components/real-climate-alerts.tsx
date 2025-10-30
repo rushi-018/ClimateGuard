@@ -12,7 +12,6 @@ import {
   CloudRain, Tornado, Eye, Volume2
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useVoiceAlerts } from "@/hooks/use-voice-alerts"
 
 interface ClimateAlert {
   id: string
@@ -165,15 +164,48 @@ interface RealClimateAlertsProps {
 export function RealClimateAlerts({ location }: RealClimateAlertsProps = {}) {
   const [alerts, setAlerts] = useState<ClimateAlert[]>(() => generateClimateAlerts())
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all')
-  
-  // Get voice alerts for coordination
-  const voiceAlertsHook = location ? useVoiceAlerts(location) : null
-  const voiceAlertHistory = voiceAlertsHook?.history || []
+  const [spokenAlertIds, setSpokenAlertIds] = useState<Set<string>>(new Set())
 
   const filteredAlerts = alerts.filter(alert => {
     if (selectedSeverity === 'all') return true
     return alert.severity === selectedSeverity
   })
+
+  // Voice announcement for alerts shown on THIS page only
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return
+    
+    // Only announce critical alerts that haven't been spoken yet
+    const unspokenCriticalAlerts = alerts.filter(
+      alert => alert.severity === 'critical' && !spokenAlertIds.has(alert.id)
+    )
+
+    if (unspokenCriticalAlerts.length === 0) return
+
+    // Announce the first unspoken critical alert
+    const alertToAnnounce = unspokenCriticalAlerts[0]
+    
+    const utterance = new SpeechSynthesisUtterance(
+      `Critical climate alert: ${alertToAnnounce.title}. ${alertToAnnounce.message}`
+    )
+    utterance.rate = 0.9
+    utterance.pitch = 1.0
+    utterance.volume = 0.8
+
+    utterance.onend = () => {
+      setSpokenAlertIds(prev => new Set([...prev, alertToAnnounce.id]))
+    }
+
+    // Small delay to prevent speaking immediately on page load
+    const timer = setTimeout(() => {
+      window.speechSynthesis.speak(utterance)
+    }, 2000)
+
+    return () => {
+      clearTimeout(timer)
+      window.speechSynthesis.cancel()
+    }
+  }, [alerts, spokenAlertIds])
 
   const dismissAlert = (alertId: string) => {
     setAlerts(prev => prev.filter(alert => alert.id !== alertId))
@@ -200,53 +232,56 @@ export function RealClimateAlerts({ location }: RealClimateAlertsProps = {}) {
 
   const criticalAlerts = alerts.filter(alert => alert.severity === 'critical')
   const highAlerts = alerts.filter(alert => alert.severity === 'high')
+  
+  // Get alerts that have been spoken
+  const spokenAlerts = alerts.filter(alert => spokenAlertIds.has(alert.id))
 
   return (
     <div className="space-y-6">
-      {/* Voice Alerts Section */}
-      {voiceAlertHistory.length > 0 && (
+      {/* Voice Announced Alerts Section - showing ONLY alerts from this page */}
+      {spokenAlerts.length > 0 && (
         <Card className="border-purple-500 bg-purple-500/10 dark:bg-purple-500/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
               <Volume2 className="h-5 w-5" />
-              Voice Announced Alerts ({voiceAlertHistory.length})
+              Voice Announced Alerts ({spokenAlerts.length})
             </CardTitle>
             <CardDescription>
-              Recent alerts that were announced via voice system
+              Alerts from this page that were announced via voice
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[200px]">
               <div className="space-y-2">
-                {voiceAlertHistory.slice(0, 5).map((item, index) => {
-                  // Parse fingerprint to extract alert type and location
-                  const parts = item.fingerprint.split('-')
-                  const alertType = parts[0] || 'Alert'
-                  const alertInfo = parts.slice(1, -1).join(' ') || 'Climate Event'
+                {spokenAlerts.map((alert) => {
+                  const Icon = ALERT_ICONS[alert.type]
                   
                   return (
                     <div
-                      key={item.fingerprint}
+                      key={alert.id}
                       className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20"
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-full bg-purple-500/10">
+                          <Icon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground mb-1 capitalize">
-                            {alertType.replace(/_/g, ' ')}: {alertInfo}
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-sm font-medium text-foreground">
+                              {alert.title}
+                            </p>
+                            <Badge variant={SEVERITY_BADGES[alert.severity]}>
+                              {alert.severity}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                            {alert.message}
                           </p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            <span>
-                              {item.lastAnnounced.toLocaleString()}
-                            </span>
-                            <Badge variant="outline" className="text-xs">
-                              Announced {item.timesAnnounced}x
-                            </Badge>
-                            {item.dismissed && (
-                              <Badge variant="secondary" className="text-xs">
-                                Dismissed
-                              </Badge>
-                            )}
+                            <MapPin className="h-3 w-3" />
+                            <span>{alert.location}</span>
+                            <Clock className="h-3 w-3 ml-2" />
+                            <span>{formatTimeAgo(alert.timestamp)}</span>
                           </div>
                         </div>
                       </div>
