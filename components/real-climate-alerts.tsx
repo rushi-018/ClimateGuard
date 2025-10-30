@@ -218,29 +218,41 @@ export function RealClimateAlerts({ location }: RealClimateAlertsProps = {}) {
           <CardContent>
             <ScrollArea className="h-[200px]">
               <div className="space-y-2">
-                {voiceAlertHistory.slice(0, 5).map((item, index) => (
-                  <div
-                    key={index}
-                    className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground mb-1">
-                          {item.text.split('.')[0]}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>
-                            {new Date(item.timestamp).toLocaleString()}
-                          </span>
-                          <Badge variant="outline" className="text-xs">
-                            Announced
-                          </Badge>
+                {voiceAlertHistory.slice(0, 5).map((item, index) => {
+                  // Parse fingerprint to extract alert type and location
+                  const parts = item.fingerprint.split('-')
+                  const alertType = parts[0] || 'Alert'
+                  const alertInfo = parts.slice(1, -1).join(' ') || 'Climate Event'
+                  
+                  return (
+                    <div
+                      key={item.fingerprint}
+                      className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground mb-1 capitalize">
+                            {alertType.replace(/_/g, ' ')}: {alertInfo}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>
+                              {item.lastAnnounced.toLocaleString()}
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              Announced {item.timesAnnounced}x
+                            </Badge>
+                            {item.dismissed && (
+                              <Badge variant="secondary" className="text-xs">
+                                Dismissed
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </ScrollArea>
           </CardContent>
