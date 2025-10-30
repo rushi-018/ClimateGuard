@@ -32,7 +32,8 @@ export function useDisasterPredictions(location?: {
       setPredictions(newPredictions);
       setLastUpdated(new Date());
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to fetch predictions";
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch predictions";
       setError(message);
       console.error("Error fetching predictions:", err);
     } finally {
@@ -63,7 +64,8 @@ export function useDisasterPredictions(location?: {
     const now = Date.now();
     const sixHours = 6 * 60 * 60 * 1000;
     return predictions.filter((p) => {
-      const peakTime = p.timeWindow.peakTime?.getTime() || p.timeWindow.end.getTime();
+      const peakTime =
+        p.timeWindow.peakTime?.getTime() || p.timeWindow.end.getTime();
       return peakTime - now < sixHours;
     });
   }, [predictions]);
@@ -87,24 +89,30 @@ export function useDisasterPredictions(location?: {
   }, [predictions]);
 
   // Mark action as completed
-  const markActionComplete = useCallback((predictionId: string, actionId: string) => {
-    setPredictions((prev) =>
-      prev.map((pred) => {
-        if (pred.id === predictionId) {
-          return {
-            ...pred,
-            preparedness: {
-              ...pred.preparedness,
-              immediateActions: pred.preparedness.immediateActions.map((action) =>
-                action.id === actionId ? { ...action, completed: true } : action
-              ),
-            },
-          };
-        }
-        return pred;
-      })
-    );
-  }, []);
+  const markActionComplete = useCallback(
+    (predictionId: string, actionId: string) => {
+      setPredictions((prev) =>
+        prev.map((pred) => {
+          if (pred.id === predictionId) {
+            return {
+              ...pred,
+              preparedness: {
+                ...pred.preparedness,
+                immediateActions: pred.preparedness.immediateActions.map(
+                  (action) =>
+                    action.id === actionId
+                      ? { ...action, completed: true }
+                      : action
+                ),
+              },
+            };
+          }
+          return pred;
+        })
+      );
+    },
+    []
+  );
 
   // Get overall risk level
   const getOverallRiskLevel = useCallback((): {
@@ -127,7 +135,8 @@ export function useDisasterPredictions(location?: {
         extreme: 4,
       }[pred.severity];
 
-      const score = (pred.probability / 100) * (pred.confidence / 100) * severityWeight;
+      const score =
+        (pred.probability / 100) * (pred.confidence / 100) * severityWeight;
       const weight = pred.confidence / 100;
 
       totalScore += score * weight;
@@ -163,7 +172,8 @@ export function useDisasterPredictions(location?: {
     let nearestPred: DisasterPrediction | null = null;
 
     predictions.forEach((pred) => {
-      const peakTime = pred.timeWindow.peakTime?.getTime() || pred.timeWindow.end.getTime();
+      const peakTime =
+        pred.timeWindow.peakTime?.getTime() || pred.timeWindow.end.getTime();
       const timeUntil = peakTime - now;
       if (timeUntil > 0 && timeUntil < nearestTime) {
         nearestTime = timeUntil;
