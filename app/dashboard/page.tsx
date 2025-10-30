@@ -19,6 +19,7 @@ const EconomicIntelligenceDashboard = lazy(() => import('@/components/economic-i
 const ActionRecommendationsDashboard = lazy(() => import('@/components/action-recommendations-dashboard').then(module => ({ default: module.ActionRecommendationsDashboard })))
 const RiskForecast = lazy(() => import('@/components/risk-forecast').then(module => ({ default: module.RiskForecast })))
 const VoiceAlertBanner = lazy(() => import('@/components/voice-alert-banner').then(module => ({ default: module.VoiceAlertBanner })))
+const AdaptationDashboard = lazy(() => import('@/components/adaptation-dashboard').then(module => ({ default: module.AdaptationDashboard })))
 
 // Simple loading components
 const MapSkeleton = () => (
@@ -70,8 +71,9 @@ export default function Dashboard() {
         </div>
         
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="adaptation">🎯 My Plan</TabsTrigger>
             <TabsTrigger value="alerts">Alerts</TabsTrigger>
             <TabsTrigger value="location">Location</TabsTrigger>
             <TabsTrigger value="economic">Economic</TabsTrigger>
@@ -112,6 +114,12 @@ export default function Dashboard() {
             {/* 10-Day Risk Forecast Section - Full Width */}
             <Suspense fallback={<ChartSkeleton />}>
               <RiskForecast location={selectedLocation} />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="adaptation" className="space-y-6">
+            <Suspense fallback={<ChartSkeleton />}>
+              <AdaptationDashboard location={selectedLocation} />
             </Suspense>
           </TabsContent>
 
