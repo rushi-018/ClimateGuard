@@ -21,6 +21,7 @@ We love your input! We want to make contributing to ClimateGuard as easy and tra
 We use GitHub to host code, to track issues and feature requests, as well as accept pull requests.
 
 ### Pull Requests
+
 Pull requests are the best way to propose changes to the codebase. We actively welcome your pull requests:
 
 1. Fork the repo and create your branch from `main`
@@ -38,6 +39,7 @@ Pull requests are the best way to propose changes to the codebase. We actively w
 - **Commit Messages**: Use [Conventional Commits](https://conventionalcommits.org/)
 
 Example commit message:
+
 ```
 feat(voice-qa): add support for multiple languages
 
@@ -86,6 +88,7 @@ We welcome feature requests! Before creating a new feature request:
 - **Accessibility Tests**: Ensure components meet accessibility standards
 
 Run tests with:
+
 ```bash
 npm test
 npm run test:e2e

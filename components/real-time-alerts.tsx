@@ -53,8 +53,8 @@ const MOCK_ALERTS: ClimateAlert[] = [
     type: "extreme_heat",
     severity: "high",
     title: "Extreme Heat Warning",
-    message: "Temperatures expected to exceed 40°C for 3+ consecutive days. Heat index may reach dangerous levels.",
-    location: "Phoenix, AZ",
+    message: "High temperature of 38.5°C detected with potential health risks",
+    location: "Mumbai, India",
     timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
     actionRequired: true,
@@ -66,8 +66,8 @@ const MOCK_ALERTS: ClimateAlert[] = [
     type: "flooding",
     severity: "critical",
     title: "Flash Flood Emergency",
-    message: "Rapid water rise detected in low-lying areas. Immediate evacuation recommended for affected zones.",
-    location: "Houston, TX",
+    message: "High precipitation levels (25.4mm) with flood risk in low-lying areas",
+    location: "London, UK",
     timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
     expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours from now
     actionRequired: true,
@@ -75,12 +75,12 @@ const MOCK_ALERTS: ClimateAlert[] = [
     source: "satellite"
   },
   {
-    id: "air-003",
-    type: "air_quality",
+    id: "drought-003",
+    type: "drought",
     severity: "medium",
-    title: "Air Quality Alert",
-    message: "PM2.5 levels elevated due to wildfire smoke. Sensitive individuals should limit outdoor activities.",
-    location: "Los Angeles, CA",
+    title: "Drought Conditions Alert",
+    message: "Low precipitation and high temperatures creating drought conditions",
+    location: "Sydney, Australia",
     timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
     expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours from now
     actionRequired: false,
@@ -111,6 +111,56 @@ export function RealTimeAlerts({ className }: AlertsSystemProps) {
   
   const { toast } = useToast()
 
+  // Load real disaster data on component mount
+  useEffect(() => {
+    const loadInitialAlerts = async () => {
+      try {
+        const response = await fetch("/api/disasters")
+        const disasterData = await response.json()
+        
+        if (disasterData.alerts && disasterData.alerts.length > 0) {
+          // Convert disaster data to ClimateAlert format
+          const disasterTypeMap: { [key: string]: ClimateAlert["type"] } = {
+            "Heat": "extreme_heat",
+            "Excessive Heat": "extreme_heat",
+            "Flood": "flooding",
+            "Flash Flood": "flooding",
+            "Drought": "drought",
+            "Wind": "storm",
+            "Thunderstorm": "storm",
+            "Severe Weather": "storm",
+            "Fire": "wildfire",
+            "Wildfire": "wildfire",
+            "Air Quality": "air_quality",
+            "Earthquake": "storm"
+          }
+          
+          const realAlerts: ClimateAlert[] = disasterData.alerts.slice(0, 10).map((alert: any, index: number) => ({
+            id: `disaster-init-${index}`,
+            type: disasterTypeMap[alert.type] || "extreme_heat",
+            severity: alert.severity.toLowerCase() as ClimateAlert["severity"],
+            title: alert.title,
+            message: alert.description,
+            location: alert.location,
+            timestamp: new Date(alert.timestamp),
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            actionRequired: alert.severity.toLowerCase() === "high" || alert.severity.toLowerCase() === "critical",
+            confidence: 95,
+            source: "satellite" as const
+          }))
+          
+          // Replace mock alerts with real disaster data
+          setAlerts(realAlerts)
+        }
+      } catch (error) {
+        console.error("Failed to load initial disaster alerts:", error)
+        // Keep mock alerts as fallback
+      }
+    }
+    
+    loadInitialAlerts()
+  }, [])
+
   // Request notification permission
   useEffect(() => {
     if (settings.desktop && "Notification" in window) {
@@ -133,7 +183,129 @@ export function RealTimeAlerts({ className }: AlertsSystemProps) {
     return () => clearInterval(interval)
   }, [isMonitoring])
 
-  const generateRandomAlert = useCallback(() => {
+  const generateRandomAlert = useCallback(async () => {
+    try {
+      // First try to fetch real disaster data from our comprehensive API
+      const disasterResponse = await fetch("/api/disasters")
+      const disasterData = await disasterResponse.json()
+      
+      if (disasterData.alerts && disasterData.alerts.length > 0) {
+        // Use real disaster data from authoritative sources
+        const randomDisasterAlert = disasterData.alerts[Math.floor(Math.random() * disasterData.alerts.length)]
+        
+        // Map disaster types to our alert types
+        const disasterTypeMap: { [key: string]: ClimateAlert["type"] } = {
+          "Heat": "extreme_heat",
+          "Excessive Heat": "extreme_heat",
+          "Flood": "flooding",
+          "Flash Flood": "flooding",
+          "Drought": "drought",
+          "Wind": "storm",
+          "Thunderstorm": "storm",
+          "Severe Weather": "storm",
+          "Fire": "wildfire",
+          "Wildfire": "wildfire",
+          "Air Quality": "air_quality",
+          "Earthquake": "storm" // Map to storm as we don't have earthquake type
+        }
+        
+        const type = disasterTypeMap[randomDisasterAlert.type] || "extreme_heat"
+        const severity = randomDisasterAlert.severity.toLowerCase() as ClimateAlert["severity"]
+        
+        const newAlert: ClimateAlert = {
+          id: `disaster-${Date.now()}`,
+          type,
+          severity,
+          title: randomDisasterAlert.title,
+          message: randomDisasterAlert.description,
+          location: randomDisasterAlert.location,
+          timestamp: new Date(randomDisasterAlert.timestamp),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+          actionRequired: severity === "high" || severity === "critical",
+          confidence: 95, // High confidence for real disaster data
+          source: "satellite" // Real authoritative data
+        }
+
+        // Filter by severity
+        const severityOrder = { "low": 0, "medium": 1, "high": 2, "critical": 3 }
+        const filterOrder = { "all": 0, "medium": 1, "high": 2, "critical": 3 }
+        
+        if (severityOrder[newAlert.severity] >= filterOrder[settings.severityFilter]) {
+          setAlerts(prev => [newAlert, ...prev].slice(0, 20)) // Keep only latest 20 alerts
+          
+          // Show notification
+          if (settings.enabled) {
+            showNotification(newAlert)
+          }
+        }
+        return
+      }
+      
+      // Fallback to location-based alerts using global map data
+      const mapResponse = await fetch("/api/global-map")
+      const mapData = await mapResponse.json()
+      
+      if (mapData.features && mapData.features.length > 0) {
+        // Pick a random location with actual risk data
+        const randomFeature = mapData.features[Math.floor(Math.random() * mapData.features.length)]
+        const props = randomFeature.properties
+        
+        // Determine alert type based on the actual risk type
+        const alertTypeMap: { [key: string]: ClimateAlert["type"] } = {
+          "Heatwave": "extreme_heat",
+          "Flood": "flooding", 
+          "Drought": "drought",
+          "Storm": "storm"
+        }
+        
+        const type = alertTypeMap[props.riskType] || "extreme_heat"
+        const severity = props.severity.toLowerCase() as ClimateAlert["severity"]
+        const location = `${props.city}, ${props.country}`
+        
+        const alertMessages = {
+          extreme_heat: `High temperature of ${props.temperature}°C detected with potential health risks`,
+          flooding: `High precipitation levels (${props.precipitation}mm) with flood risk`,
+          drought: `Low precipitation and high temperatures creating drought conditions`,
+          storm: `Severe weather conditions with high winds and precipitation`,
+          wildfire: `Fire risk elevated due to dry conditions and high temperatures`,
+          air_quality: `Air quality deteriorated due to weather conditions`
+        }
+
+        const newAlert: ClimateAlert = {
+          id: `alert-${Date.now()}`,
+          type,
+          severity,
+          title: `${type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} ${severity === 'critical' ? 'Emergency' : 'Alert'}`,
+          message: alertMessages[type],
+          location,
+          timestamp: new Date(),
+          expiresAt: new Date(Date.now() + (Math.random() * 24 + 6) * 60 * 60 * 1000), // 6-30 hours
+          actionRequired: severity === "high" || severity === "critical",
+          confidence: props.riskScore || Math.floor(Math.random() * 30 + 70), // Use actual risk score
+          source: "ai_prediction" as any
+        }
+
+        // Filter by severity
+        const severityOrder = { "low": 0, "medium": 1, "high": 2, "critical": 3 }
+        const filterOrder = { "all": 0, "medium": 1, "high": 2, "critical": 3 }
+        
+        if (severityOrder[newAlert.severity] >= filterOrder[settings.severityFilter]) {
+          setAlerts(prev => [newAlert, ...prev].slice(0, 20)) // Keep only latest 20 alerts
+          
+          // Show notification
+          if (settings.enabled) {
+            showNotification(newAlert)
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to generate real disaster alert:", error)
+      // Fallback to generic alert
+      generateGenericAlert()
+    }
+  }, [settings])
+
+  const generateGenericAlert = () => {
     const alertTypes: ClimateAlert["type"][] = ["extreme_heat", "flooding", "drought", "storm", "wildfire", "air_quality"]
     const severities: ClimateAlert["severity"][] = ["low", "medium", "high", "critical"]
     const locations = ["New York, NY", "Miami, FL", "Denver, CO", "Seattle, WA", "Chicago, IL"]
@@ -177,7 +349,7 @@ export function RealTimeAlerts({ className }: AlertsSystemProps) {
         showNotification(newAlert)
       }
     }
-  }, [settings])
+  }
 
   const showNotification = (alert: ClimateAlert) => {
     // Toast notification

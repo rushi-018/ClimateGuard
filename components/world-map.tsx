@@ -149,6 +149,11 @@ export function WorldMap() {
 
       if (!mapRef.current || map) return
 
+      // Clear any existing map instance from the container
+      if ((mapRef.current as any)._leaflet_id) {
+        delete (mapRef.current as any)._leaflet_id
+      }
+
       // Initialize map with dark theme
       const leafletMap = L.map(mapRef.current, {
         center: [20, 0],
@@ -279,8 +284,15 @@ export function WorldMap() {
 
     return () => {
       if (map) {
-        map.remove()
+        try {
+          map.remove()
+        } catch (error) {
+          console.warn("Error removing map:", error)
+        }
         setMap(null)
+      }
+      if (mapRef.current && (mapRef.current as any)._leaflet_id) {
+        delete (mapRef.current as any)._leaflet_id
       }
     }
   }, [])

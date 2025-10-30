@@ -4,9 +4,10 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, Map, Satellite, Layers, RefreshCw, Globe } from "lucide-react"
+import { Loader2, Map, Satellite, Layers, RefreshCw, Globe, Bell, AlertTriangle } from "lucide-react"
 import { motion } from "framer-motion"
 import dynamic from "next/dynamic"
+import { useAlertSubscription, useSystemAlerts } from "@/hooks/use-alerts"
 
 // Dynamically import Plotly to avoid SSR issues
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false })
@@ -50,6 +51,13 @@ export function GlobalHeatmap({ className, height = 500 }: GlobalHeatmapProps) {
   const [mapStyle, setMapStyle] = useState<"terrain" | "satellite" | "street">("terrain")
   const [selectedRisk, setSelectedRisk] = useState<string>("all")
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+  
+  // Alert system integration
+  const { alerts: mapAlerts, alertCount } = useAlertSubscription("global-heatmap", {
+    typeFilter: ["extreme_heat", "flooding", "drought", "storm", "wildfire"],
+    severityFilter: "high" // Only show high-severity alerts on map
+  })
+  const { createErrorAlert, createSuccessAlert } = useSystemAlerts("global-heatmap")
 
   const riskTypes = ["all", "flood", "drought", "heatwave", "storm"]
 
@@ -57,16 +65,33 @@ export function GlobalHeatmap({ className, height = 500 }: GlobalHeatmapProps) {
     const fetchMapData = async () => {
       try {
         setLoading(true)
+        
         const response = await fetch("/api/global-map")
         if (!response.ok) throw new Error("Failed to fetch map data")
         const result = await response.json()
+        
         setData(result)
         setLastRefresh(new Date())
+        
+        // Check for high-risk locations and create alerts
+        if (result.features) {
+          const highRiskLocations = result.features.filter((feature: any) => 
+            feature.properties.severity === "High" || feature.properties.severity === "Critical"
+          )
+          
+          if (highRiskLocations.length > 0) {
+            createSuccessAlert(`Map updated: ${highRiskLocations.length} high-risk locations detected`)
+          } else {
+            createSuccessAlert("Map updated successfully")
+          }
+        }
       } catch (err) {
         console.warn("Map API failed, using mock data:", err)
-        setError(err instanceof Error ? err.message : "Unknown error")
+        const errorMessage = err instanceof Error ? err.message : "Unknown error"
+        setError(errorMessage)
         setData(generateMockMapData())
         setLastRefresh(new Date())
+        createErrorAlert(new Error(errorMessage), "Map data fetch")
       } finally {
         setLoading(false)
       }
@@ -77,7 +102,7 @@ export function GlobalHeatmap({ className, height = 500 }: GlobalHeatmapProps) {
     // Auto-refresh every 5 minutes
     const interval = setInterval(fetchMapData, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [createErrorAlert, createSuccessAlert])
 
   const generateMockMapData = (): MapData => {
     const cities = [
@@ -150,7 +175,7 @@ export function GlobalHeatmap({ className, height = 500 }: GlobalHeatmapProps) {
     ...data,
     features: selectedRisk === "all" 
       ? data.features 
-      : data.features.filter(f => f.properties.riskType === selectedRisk)
+      : data.features.filter(f => f.properties.riskType?.toLowerCase() === selectedRisk.toLowerCase())
   } : null
 
   if (loading) {
@@ -214,15 +239,35 @@ export function GlobalHeatmap({ className, height = 500 }: GlobalHeatmapProps) {
               <CardTitle className="flex items-center gap-2">
                 <Globe className="w-5 h-5" />
                 Global Climate Risk Map
+                {/* Global alert indicator */}
+                {alertCount > 0 && (
+                  <div className="relative">
+                    <Bell className="w-4 h-4 text-red-500" />
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse border-2 border-white text-[8px] text-white font-bold flex items-center justify-center">
+                      {alertCount > 9 ? '9+' : alertCount}
+                    </div>
+                  </div>
+                )}
               </CardTitle>
-              <CardDescription>
-                Real-time climate risk visualization • Updated {lastRefresh.toLocaleTimeString()}
+              <CardDescription className="flex items-center gap-4">
+                <span>Real-time climate risk visualization • Updated {lastRefresh.toLocaleTimeString()}</span>
+                {alertCount > 0 && (
+                  <Badge variant="destructive" className="text-xs">
+                    {alertCount} Alert{alertCount !== 1 ? 's' : ''}
+                  </Badge>
+                )}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs">
                 {mapData.length} Locations
               </Badge>
+              {/* High-risk location indicator */}
+              {mapData.filter(d => d.severity === "High").length > 0 && (
+                <Badge variant="destructive" className="text-xs">
+                  {mapData.filter(d => d.severity === "High").length} High Risk
+                </Badge>
+              )}
               <Button
                 size="sm"
                 variant="outline"

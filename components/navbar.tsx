@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 export function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between relative">
         <Link href="/" className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <Globe className="w-5 h-5 text-primary-foreground" />
@@ -42,8 +42,8 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button asChild>
-            <Link href="/dashboard">Get Started</Link>
+          <Button asChild className="cursor-pointer">
+            <Link href="/dashboard" className="cursor-pointer">Get Started</Link>
           </Button>
         </div>
       </div>

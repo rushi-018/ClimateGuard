@@ -3,11 +3,24 @@
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { AnimatedGlobe } from "@/components/animated-globe"
 import { Navbar } from "@/components/navbar"
 import { ArrowRight, Shield, TrendingUp, AlertTriangle, Zap, Globe, Mic, Calculator, Bell, Sparkles, Bot } from "lucide-react"
 import { motion } from "framer-motion"
 import Link from "next/link"
+import { Suspense, lazy } from 'react'
+
+// Lazy load the heavy AnimatedGlobe component
+const AnimatedGlobe = lazy(() => import("@/components/animated-globe").then(module => ({ default: module.AnimatedGlobe })))
+
+// Simple placeholder for the globe while loading
+const GlobePlaceholder = () => (
+  <div className="w-full h-96 lg:h-[500px] flex items-center justify-center bg-gradient-to-br from-primary/10 to-blue-600/10 rounded-xl">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
+      <div className="text-muted-foreground">Loading Climate Globe...</div>
+    </div>
+  </div>
+)
 
 export default function HomePage() {
   return (
@@ -46,15 +59,15 @@ export default function HomePage() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" asChild className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 transform hover:scale-105 transition-all duration-200">
-                  <Link href="/dashboard">
+                <Button size="lg" asChild className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 transform hover:scale-105 transition-all duration-200 cursor-pointer">
+                  <Link href="/dashboard" className="cursor-pointer">
                     <Bot className="mr-2 w-5 h-5" />
                     Launch AI Dashboard
                     <ArrowRight className="ml-2 w-4 h-4" />
                   </Link>
                 </Button>
-                <Button variant="outline" size="lg" asChild className="hover:bg-primary/5 border-2 hover:border-primary/50 transition-all duration-200">
-                  <Link href="/global">
+                <Button variant="outline" size="lg" asChild className="hover:bg-primary/5 border-2 hover:border-primary/50 transition-all duration-200 cursor-pointer">
+                  <Link href="/global" className="cursor-pointer">
                     <Globe className="mr-2 w-4 h-4" />
                     Explore Global View
                   </Link>
@@ -83,7 +96,9 @@ export default function HomePage() {
 
             <div className="relative">
               <div className="w-full h-96 lg:h-[500px] animate-float">
-                <AnimatedGlobe />
+                <Suspense fallback={<GlobePlaceholder />}>
+                  <AnimatedGlobe />
+                </Suspense>
               </div>
             </div>
           </div>

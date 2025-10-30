@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -52,45 +52,113 @@ const ACTION_ICONS = {
   policy: Target,
 }
 
+// Helper function to generate mock actions
+const generateMockActions = (detectedRisks: any[]): Action[] => {
+  const baseActions: Action[] = [
+    {
+      id: "1",
+      title: "Emergency Response Coordination",
+      description: "Activate emergency operations center and coordinate response efforts across all departments",
+      priority: "Critical",
+      timeline: "Immediate (0-2 hours)",  
+      status: "Ready",
+      riskTypes: ["flood", "storm", "heatwave"],
+      impact: "Rapid response coordination, reduces response time by 40%",
+      resources: ["Emergency Staff", "Communication Systems", "Command Center"],
+      cost: "High",
+      effectiveness: 95,
+      carbonReduction: 50,
+    },
+    {
+      id: "2", 
+      title: "Smart Early Warning System",
+      description: "Deploy AI-powered early warning alerts to at-risk populations via multiple channels",
+      priority: "High",
+      timeline: "1-6 hours",
+      status: "Active",
+      riskTypes: ["flood", "heatwave", "storm"],
+      impact: "Prevents casualties, enables proactive evacuation",
+      resources: ["Alert Systems", "Mobile Networks", "Social Media"],
+      cost: "Medium",
+      effectiveness: 88,
+      carbonReduction: 25,
+    },
+    {
+      id: "3",
+      title: "Community Resilience Hubs",
+      description: "Open public cooling/warming centers with backup power and emergency supplies",
+      priority: "High",
+      timeline: "2-8 hours",
+      status: "Planning",
+      riskTypes: ["heatwave", "storm"],
+      impact: "Provides safe shelter for 500+ vulnerable residents",
+      resources: ["Public Facilities", "Backup Generators", "Emergency Supplies"],
+      cost: "Medium",
+      effectiveness: 82,
+      carbonReduction: 150,
+    },
+    {
+      id: "4",
+      title: "Infrastructure Protection Protocol",
+      description: "Secure critical infrastructure and deploy flood barriers at vulnerable points",
+      priority: "High",
+      timeline: "4-12 hours",
+      status: "Ready",
+      riskTypes: ["flood", "storm"],
+      impact: "Protects power grid, water treatment, and transportation",
+      resources: ["Engineering Teams", "Flood Barriers", "Backup Systems"],
+      cost: "High",
+      effectiveness: 90,
+      carbonReduction: 200,
+    },
+    {
+      id: "5",
+      title: "Water Conservation Measures",
+      description: "Implement emergency water restrictions and activate conservation protocols",
+      priority: "Medium",
+      timeline: "1-3 days",
+      status: "Planning",
+      riskTypes: ["drought", "heatwave"],
+      impact: "Reduces water demand by 30%, preserves emergency reserves",
+      resources: ["Water Management", "Public Communications", "Enforcement"],
+      cost: "Low",
+      effectiveness: 75,
+      carbonReduction: 80,
+    },
+    {
+      id: "6",
+      title: "Green Infrastructure Deployment", 
+      description: "Deploy portable green infrastructure solutions for flood management and cooling",
+      priority: "Medium",
+      timeline: "1-7 days",
+      status: "Ready",
+      riskTypes: ["flood", "heatwave"],
+      impact: "Natural flood management, urban cooling effect",
+      resources: ["Green Tech", "Installation Teams", "Maintenance"],
+      cost: "Medium",
+      effectiveness: 78,
+      carbonReduction: 300,
+    },
+  ]
+
+  // Filter actions based on detected risks
+  if (detectedRisks.length > 0) {
+    const riskTypes = detectedRisks.map(r => r.type?.toLowerCase() || '')
+    return baseActions.filter(action => 
+      action.riskTypes.some(type => riskTypes.includes(type))
+    ).slice(0, 4)
+  }
+
+  return baseActions.slice(0, 4)
+}
+
 export function ActionList({ risks = [], location, className }: ActionListProps) {
-  const [actions, setActions] = useState<Action[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
-
-  useEffect(() => {
-    const fetchActions = async () => {
-      try {
-        setLoading(true)
-        
-        // Build query parameters based on detected risks
-        const params = new URLSearchParams()
-        if (risks.length > 0) {
-          params.set("risk_types", risks.map(r => r.type).join(","))
-          params.set("max_severity", Math.max(...risks.map(r => Math.floor(r.score / 25))).toString())
-        }
-        if (location) {
-          params.set("lat", location.lat.toString())
-          params.set("lon", location.lon.toString())
-        }
-        
-        const response = await fetch(`/api/actions?${params.toString()}`)
-        
-        if (!response.ok) throw new Error("Failed to fetch actions")
-        
-        const result = await response.json()
-        setActions(parseActionsFromAPI(result.actions || []))
-      } catch (err) {
-        console.warn("Actions API failed, using mock data:", err)
-        setError(err instanceof Error ? err.message : "Unknown error")
-        setActions(generateMockActions(risks))
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchActions()
-  }, [risks, location])
+  
+  // Use static mock data to prevent API calls
+  const actions = useMemo(() => generateMockActions(risks), [])
+  const loading = false
+  const error = null
 
   const parseActionsFromAPI = (apiActions: any[]): Action[] => {
     return apiActions.map((action, index) => ({
@@ -107,105 +175,6 @@ export function ActionList({ risks = [], location, className }: ActionListProps)
       effectiveness: Math.floor(Math.random() * 30) + 70, // 70-100%
       carbonReduction: Math.floor(Math.random() * 500) + 100,
     }))
-  }
-
-  const generateMockActions = (detectedRisks: any[]): Action[] => {
-    const baseActions: Action[] = [
-      {
-        id: "1",
-        title: "Emergency Response Coordination",
-        description: "Activate emergency operations center and coordinate response efforts across all departments",
-        priority: "Critical",
-        timeline: "Immediate (0-2 hours)",
-        status: "Ready",
-        riskTypes: ["flood", "storm", "heatwave"],
-        impact: "Rapid response coordination, reduces response time by 40%",
-        resources: ["Emergency Staff", "Communication Systems", "Command Center"],
-        cost: "High",
-        effectiveness: 95,
-        carbonReduction: 50,
-      },
-      {
-        id: "2", 
-        title: "Smart Early Warning System",
-        description: "Deploy AI-powered early warning alerts to at-risk populations via multiple channels",
-        priority: "High",
-        timeline: "1-6 hours",
-        status: "Active",
-        riskTypes: ["flood", "heatwave", "storm"],
-        impact: "Prevents casualties, enables proactive evacuation",
-        resources: ["Alert Systems", "Mobile Networks", "Social Media"],
-        cost: "Medium",
-        effectiveness: 88,
-        carbonReduction: 25,
-      },
-      {
-        id: "3",
-        title: "Community Resilience Hubs",
-        description: "Open public cooling/warming centers with backup power and emergency supplies",
-        priority: "High",
-        timeline: "2-8 hours",
-        status: "Planning",
-        riskTypes: ["heatwave", "storm"],
-        impact: "Provides safe shelter for 500+ vulnerable residents",
-        resources: ["Public Facilities", "Backup Generators", "Emergency Supplies"],
-        cost: "Medium",
-        effectiveness: 82,
-        carbonReduction: 150,
-      },
-      {
-        id: "4",
-        title: "Infrastructure Protection Protocol",
-        description: "Secure critical infrastructure and deploy flood barriers at vulnerable points",
-        priority: "High",
-        timeline: "4-12 hours",
-        status: "Ready",
-        riskTypes: ["flood", "storm"],
-        impact: "Protects power grid, water treatment, and transportation",
-        resources: ["Engineering Teams", "Flood Barriers", "Backup Systems"],
-        cost: "High",
-        effectiveness: 90,
-        carbonReduction: 200,
-      },
-      {
-        id: "5",
-        title: "Water Conservation Measures",
-        description: "Implement emergency water restrictions and activate conservation protocols",
-        priority: "Medium",
-        timeline: "1-3 days",
-        status: "Planning",
-        riskTypes: ["drought", "heatwave"],
-        impact: "Reduces water demand by 30%, preserves emergency reserves",
-        resources: ["Water Management", "Public Communications", "Enforcement"],
-        cost: "Low",
-        effectiveness: 75,
-        carbonReduction: 80,
-      },
-      {
-        id: "6",
-        title: "Green Infrastructure Deployment", 
-        description: "Deploy portable green infrastructure solutions for flood management and cooling",
-        priority: "Medium",
-        timeline: "1-7 days",
-        status: "Ready",
-        riskTypes: ["flood", "heatwave"],
-        impact: "Natural flood management, urban cooling effect",
-        resources: ["Green Tech", "Installation Teams", "Maintenance"],
-        cost: "Medium",
-        effectiveness: 78,
-        carbonReduction: 300,
-      },
-    ]
-
-    // Filter actions based on detected risks
-    if (detectedRisks.length > 0) {
-      const riskTypes = detectedRisks.map(r => r.type.toLowerCase())
-      return baseActions.filter(action => 
-        action.riskTypes.some(type => riskTypes.includes(type))
-      ).slice(0, 4)
-    }
-
-    return baseActions.slice(0, 4)
   }
 
   const getActionIcon = (action: Action) => {

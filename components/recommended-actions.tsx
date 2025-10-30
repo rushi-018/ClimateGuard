@@ -155,7 +155,7 @@ export function RecommendedActions() {
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed mb-2">{action.description}</p>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="secondary" className={getPriorityColor(action.priority)} size="sm">
+                    <Badge variant="secondary" className={getPriorityColor(action.priority)}>
                       {action.priority}
                     </Badge>
                     <span className={`text-xs font-medium ${getCategoryColor(action.category)}`}>

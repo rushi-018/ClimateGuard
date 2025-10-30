@@ -105,7 +105,7 @@ export function SystemStatus() {
       console.error(`[v0] Test ${endpoint} failed:`, error)
       setTestResults((prev) => ({
         ...prev,
-        [endpoint]: { success: false, error: error.message },
+        [endpoint]: { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       }))
     } finally {
       setTestLoading((prev) => ({ ...prev, [endpoint]: false }))

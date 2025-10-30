@@ -1,12 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Mic, MicOff, Volume2, VolumeX, MessageSquare, Zap, Loader2 } from "lucide-react"
+import { Mic, MicOff, Volume2, VolumeX, MessageSquare, Zap, Loader2, Bell, AlertTriangle, Sparkles } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useVoiceAlerts, useGlobalAlerts, useAlertSettings } from "@/hooks/use-alerts"
+import { getClimateResponse, type LLMMessage } from "@/lib/llm-service"
+import { getCachedClimateContext } from "@/lib/climate-context"
 
 // Web Speech API types
 interface SpeechRecognition extends EventTarget {
@@ -31,15 +34,19 @@ interface SpeechRecognitionErrorEvent extends Event {
   message: string
 }
 
-declare global {
-  interface Window {
-    SpeechRecognition: new () => SpeechRecognition
-    webkitSpeechRecognition: new () => SpeechRecognition
-  }
-}
+// SpeechRecognition types are declared in types/speech.d.ts
 
 interface VoiceQAProps {
   className?: string
+  location?: {
+    name: string
+    lat: number
+    lon: number
+    timezone?: string
+  }
+  getRisksData?: () => any[]
+  getAlertsData?: () => any[]
+  getForecastData?: () => any[]
 }
 
 interface QASession {
@@ -50,13 +57,23 @@ interface QASession {
   confidence: number
 }
 
-export function VoiceQA({ className }: VoiceQAProps) {
+export function VoiceQA({ className, location, getRisksData, getAlertsData, getForecastData }: VoiceQAProps) {
   const [isListening, setIsListening] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentText, setCurrentText] = useState("")
   const [sessions, setSessions] = useState<QASession[]>([])
   const [isSupported, setIsSupported] = useState(false)
+  const [conversationHistory, setConversationHistory] = useState<LLMMessage[]>([])
+
+  // Default location if not provided
+  const defaultLocation = {
+    name: "New York City",
+    lat: 40.7128,
+    lon: -74.006,
+    timezone: "America/New_York"
+  }
+  const currentLocation = location || defaultLocation
 
   // Web Speech API references
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null)
@@ -97,11 +114,31 @@ export function VoiceQA({ className }: VoiceQAProps) {
           setIsListening(false)
         }
 
-        setRecognition(recognitionInstance)
+        setRecognition(recognitionInstance as any)
         setSynthesis(speechSynthesis)
       }
     }
   }, [])
+
+  // Voice alerts integration - DISABLED AUTO-PLAY
+  // The new intelligent voice alert system (voice-alert-banner) handles all voice announcements
+  // with real data, deduplication, and user controls. No need for auto-play here.
+  // Keeping these hooks for potential manual control in the future.
+  const { announceAlert, stopAnnouncements } = useVoiceAlerts()
+  const { alerts, criticalAlerts, hasCriticalAlerts } = useGlobalAlerts()
+  const { settings } = useAlertSettings()
+
+  // DISABLED: Auto-announce removed to prevent repetitive alerts on page load
+  // The VoiceAlertBanner component now handles all voice announcements intelligently
+  // useEffect(() => {
+  //   if (settings.voice && criticalAlerts.length > 0 && !isSpeaking && !isListening) {
+  //     const veryHighCriticalAlerts = criticalAlerts.filter(alert => alert.severity === "critical")
+  //     if (veryHighCriticalAlerts.length > 0) {
+  //       const latestVeryHigh = veryHighCriticalAlerts[0]
+  //       announceAlert(latestVeryHigh)
+  //     }
+  //   }
+  // }, [criticalAlerts.length, settings.voice, isSpeaking, isListening, announceAlert, criticalAlerts])
 
   const startListening = () => {
     if (recognition && !isListening) {
@@ -144,20 +181,39 @@ export function VoiceQA({ className }: VoiceQAProps) {
     setIsProcessing(true)
     
     try {
-      const answer = await processClimateQuestion(question)
+      // Build climate context from current dashboard data
+      const context = await getCachedClimateContext(
+        currentLocation,
+        getRisksData,
+        getAlertsData,
+        getForecastData
+      )
+
+      // Get LLM response with conversation history
+      const answer = await getClimateResponse(question, context, conversationHistory)
+
+      // Update conversation history (keep last 6 messages = 3 exchanges)
+      setConversationHistory(prev => [
+        ...prev.slice(-4), // Keep last 2 exchanges
+        { role: "user", content: question },
+        { role: "assistant", content: answer }
+      ])
+
       const session: QASession = {
         id: Date.now().toString(),
         question,
-        answer: answer.text,
+        answer: answer,
         timestamp: new Date(),
-        confidence: answer.confidence,
+        confidence: 0.9, // High confidence with LLM
       }
 
       setSessions(prev => [session, ...prev.slice(0, 4)]) // Keep last 5 sessions
-      speakAnswer(answer.text)
+      speakAnswer(answer)
     } catch (error) {
       console.error('Failed to process question:', error)
-      setCurrentText("Sorry, I couldn't process that question.")
+      const errorMessage = "I apologize, but I'm having trouble processing your question right now. Please try again or check the dashboard for climate information."
+      setCurrentText(errorMessage)
+      speakAnswer(errorMessage)
     } finally {
       setIsProcessing(false)
     }
@@ -174,13 +230,31 @@ export function VoiceQA({ className }: VoiceQAProps) {
     return (
       <Card className={className}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5" />
-            Voice Climate Assistant
-          </CardTitle>
-          <CardDescription>
-            Voice-powered climate risk Q&A system
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                Voice Climate Assistant
+                {hasCriticalAlerts && (
+                  <Badge variant="destructive" className="ml-2 animate-pulse">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    Critical Alerts
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                Voice-powered climate risk Q&A system {settings.voice && "• Voice alerts enabled"}
+              </CardDescription>
+            </div>
+            {alerts.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Badge variant={hasCriticalAlerts ? "destructive" : "secondary"} className="flex items-center gap-1">
+                  <Bell className="w-3 h-3" />
+                  {alerts.length}
+                </Badge>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
@@ -205,12 +279,12 @@ export function VoiceQA({ className }: VoiceQAProps) {
             <MessageSquare className="w-5 h-5" />
             Voice Climate Assistant
             <Badge variant="outline" className="text-xs">
-              <Zap className="w-3 h-3 mr-1" />
-              AI-Powered
+              <Sparkles className="w-3 h-3 mr-1" />
+              AI-Powered with Real Data
             </Badge>
           </CardTitle>
           <CardDescription>
-            Ask about climate risks anywhere in the world using voice or text
+            Ask about climate risks for {currentLocation.name} using voice or text • Powered by Groq AI
           </CardDescription>
         </CardHeader>
 
@@ -340,7 +414,7 @@ export function VoiceQA({ className }: VoiceQAProps) {
             {sessions.length === 0 && (
               <div className="text-center py-6 text-muted-foreground">
                 <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Try asking: "What's the climate risk in New York?"</p>
+                <p className="text-sm">Try asking: "What's the climate risk in {currentLocation.name}?"</p>
               </div>
             )}
           </div>
@@ -350,10 +424,10 @@ export function VoiceQA({ className }: VoiceQAProps) {
             <h4 className="text-sm font-medium">Example Questions</h4>
             <div className="flex flex-wrap gap-2">
               {[
-                "What's the flood risk in Miami?",
-                "Climate risks in Tokyo next week",
-                "Drought conditions in California",
-                "Storm alerts for London"
+                `What are the risks in ${currentLocation.name}?`,
+                "Should I be concerned about the heat?",
+                "What's the weather forecast?",
+                "Any critical alerts I should know about?"
               ].map((example) => (
                 <Button
                   key={example}
@@ -375,174 +449,4 @@ export function VoiceQA({ className }: VoiceQAProps) {
       </Card>
     </motion.div>
   )
-}
-
-/**
- * Process climate-related questions using AI/rule-based logic
- */
-async function processClimateQuestion(question: string): Promise<{ text: string; confidence: number }> {
-  const normalizedQuestion = question.toLowerCase()
-  
-  // Extract location from question
-  const locationMatch = extractLocation(normalizedQuestion)
-  
-  // Determine question type
-  const questionType = determineQuestionType(normalizedQuestion)
-  
-  try {
-    // Fetch relevant data based on question
-    let responseText = ""
-    let confidence = 0.8
-
-    if (questionType.includes("risk") || questionType.includes("alert")) {
-      const riskData = await fetchRiskData(locationMatch)
-      responseText = generateRiskResponse(riskData, locationMatch, questionType)
-    } else if (questionType.includes("weather")) {
-      const weatherData = await fetchWeatherData(locationMatch)
-      responseText = generateWeatherResponse(weatherData, locationMatch)
-    } else if (questionType.includes("forecast") || questionType.includes("prediction")) {
-      const forecastData = await fetchForecastData(locationMatch)
-      responseText = generateForecastResponse(forecastData, locationMatch)
-    } else {
-      // General climate information
-      responseText = generateGeneralResponse(normalizedQuestion, locationMatch)
-      confidence = 0.6
-    }
-
-    return { text: responseText, confidence }
-  } catch (error) {
-    return {
-      text: `I'm having trouble accessing climate data right now. Please try again later or check our dashboard for the latest information about ${locationMatch || "your area"}.`,
-      confidence: 0.5
-    }
-  }
-}
-
-function extractLocation(question: string): string {
-  // Simple location extraction - in production, use NLP library
-  const locationPatterns = [
-    /in\s+([a-z\s]+?)(?:\s|$|\.|\?)/i,
-    /for\s+([a-z\s]+?)(?:\s|$|\.|\?)/i,
-    /at\s+([a-z\s]+?)(?:\s|$|\.|\?)/i,
-  ]
-  
-  for (const pattern of locationPatterns) {
-    const match = question.match(pattern)
-    if (match) {
-      return match[1].trim()
-    }
-  }
-  
-  // Common city names
-  const cities = ["new york", "london", "tokyo", "miami", "california", "los angeles", "chicago", "houston"]
-  for (const city of cities) {
-    if (question.includes(city)) {
-      return city
-    }
-  }
-  
-  return "your area"
-}
-
-function determineQuestionType(question: string): string[] {
-  const types = []
-  
-  if (question.includes("risk") || question.includes("danger")) types.push("risk")
-  if (question.includes("flood")) types.push("flood")
-  if (question.includes("drought")) types.push("drought")
-  if (question.includes("heat") || question.includes("temperature")) types.push("heatwave")
-  if (question.includes("storm") || question.includes("wind")) types.push("storm")
-  if (question.includes("weather")) types.push("weather")
-  if (question.includes("forecast") || question.includes("predict")) types.push("forecast")
-  if (question.includes("alert") || question.includes("warning")) types.push("alert")
-  
-  return types.length > 0 ? types : ["general"]
-}
-
-async function fetchRiskData(location: string) {
-  // Mock implementation - in production, this would call the actual API
-  return {
-    location,
-    floodRisk: 0.3 + Math.random() * 0.4,
-    droughtRisk: 0.2 + Math.random() * 0.3,
-    heatwaveRisk: 0.4 + Math.random() * 0.3,
-    stormRisk: 0.2 + Math.random() * 0.2,
-  }
-}
-
-async function fetchWeatherData(location: string) {
-  return {
-    location,
-    temperature: 20 + Math.random() * 15,
-    precipitation: Math.random() * 10,
-    humidity: 40 + Math.random() * 40,
-    windSpeed: 5 + Math.random() * 15,
-  }
-}
-
-async function fetchForecastData(location: string) {
-  return {
-    location,
-    forecast: Array.from({ length: 7 }, (_, i) => ({
-      day: i + 1,
-      risk: 0.2 + Math.random() * 0.3,
-      temperature: 18 + Math.random() * 12,
-    }))
-  }
-}
-
-function generateRiskResponse(data: any, location: string, types: string[]): string {
-  const risks = [
-    { name: "flood", value: data.floodRisk, emoji: "🌊" },
-    { name: "drought", value: data.droughtRisk, emoji: "🌵" },
-    { name: "heatwave", value: data.heatwaveRisk, emoji: "🔥" },
-    { name: "storm", value: data.stormRisk, emoji: "⛈️" },
-  ]
-  
-  const highestRisk = risks.reduce((prev, current) => prev.value > current.value ? prev : current)
-  const riskLevel = highestRisk.value > 0.7 ? "high" : highestRisk.value > 0.4 ? "moderate" : "low"
-  
-  return `Based on current data for ${location}, the primary climate risk is ${highestRisk.emoji} ${highestRisk.name} with a ${riskLevel} risk level of ${(highestRisk.value * 100).toFixed(0)}%. ${getRiskAdvice(highestRisk.name, riskLevel)}`
-}
-
-function generateWeatherResponse(data: any, location: string): string {
-  return `Current weather conditions in ${location}: Temperature is ${data.temperature.toFixed(1)}°C, with ${data.precipitation.toFixed(1)}mm precipitation, ${data.humidity.toFixed(0)}% humidity, and ${data.windSpeed.toFixed(1)} km/h wind speed.`
-}
-
-function generateForecastResponse(data: any, location: string): string {
-  const avgRisk = data.forecast.reduce((sum: number, day: any) => sum + day.risk, 0) / data.forecast.length
-  const trend = avgRisk > 0.4 ? "increasing climate risks" : "stable conditions"
-  
-  return `The 7-day forecast for ${location} shows ${trend} with an average risk level of ${(avgRisk * 100).toFixed(0)}%. Monitor conditions closely and follow safety guidelines.`
-}
-
-function generateGeneralResponse(question: string, location: string): string {
-  return `I can help you with climate risk information for ${location}. Try asking about specific risks like floods, droughts, heatwaves, or storms. You can also ask for weather forecasts or safety recommendations.`
-}
-
-function getRiskAdvice(riskType: string, level: string): string {
-  const advice = {
-    flood: {
-      high: "Avoid low-lying areas and have an emergency kit ready.",
-      moderate: "Stay alert for weather updates and avoid unnecessary travel.",
-      low: "Normal precautions apply."
-    },
-    drought: {
-      high: "Conserve water and follow local restrictions.",
-      moderate: "Be mindful of water usage.",
-      low: "No special precautions needed."
-    },
-    heatwave: {
-      high: "Stay indoors during peak hours and stay hydrated.",
-      moderate: "Limit outdoor activities and drink plenty of water.",
-      low: "Normal summer precautions apply."
-    },
-    storm: {
-      high: "Secure outdoor items and avoid travel if possible.",
-      moderate: "Monitor weather updates closely.",
-      low: "Be aware of changing conditions."
-    }
-  }
-  
-  return advice[riskType as keyof typeof advice]?.[level as keyof (typeof advice)[keyof typeof advice]] || "Follow local emergency guidelines."
 }

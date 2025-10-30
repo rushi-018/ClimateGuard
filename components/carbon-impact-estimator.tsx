@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { Leaf, TrendingDown, Calculator, Zap, Target } from "lucide-react"
+import { Leaf, TrendingDown, Calculator, Zap, Target, AlertTriangle, Bell } from "lucide-react"
 import { motion } from "framer-motion"
+import { useAlertSubscription, useSystemAlerts } from "@/hooks/use-alerts"
 
 interface CarbonImpactProps {
   currentRiskLevel?: number // 0-100
@@ -124,6 +125,10 @@ export function CarbonImpactEstimator({ currentRiskLevel = 50, className }: Carb
   const [calculation, setCalculation] = useState<ImpactCalculation | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
 
+  // Alert integration
+  const { alertCount } = useAlertSubscription('carbon-estimator')
+  const { createSystemAlert, createSuccessAlert } = useSystemAlerts('carbon-estimator')
+
   useEffect(() => {
     if (selectedMeasures.length > 0) {
       calculateImpact()
@@ -164,13 +169,30 @@ export function CarbonImpactEstimator({ currentRiskLevel = 50, className }: Carb
     
     const costEffectiveness = (avgEffectiveness * avgCostScore) / 100
 
-    setCalculation({
+    const calculationResult = {
       totalReduction: totalLifetimeReduction,
       percentageImprovement: riskReduction,
       yearlyBenefit,
       costEffectiveness,
       measures
-    })
+    }
+
+    setCalculation(calculationResult)
+    
+    // Generate alert for significant impact calculations
+    if (totalLifetimeReduction > 10000) { // More than 10 tons CO2 reduction
+      createSuccessAlert(
+        `High-impact carbon scenario calculated: ${(totalLifetimeReduction / 1000).toFixed(1)} tons CO2 reduction over ${timeHorizon} years`,
+        { calculationResult }
+      )
+    } else if (riskReduction > 20) { // More than 20% risk reduction
+      createSystemAlert(
+        "Carbon Impact Analysis Complete",
+        `Analysis shows ${riskReduction.toFixed(1)}% potential risk reduction with selected measures`,
+        "medium",
+        { calculationResult }
+      )
+    }
     
     setIsCalculating(false)
   }
@@ -211,17 +233,27 @@ export function CarbonImpactEstimator({ currentRiskLevel = 50, className }: Carb
     >
       <Card className={className}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calculator className="w-5 h-5" />
-            Carbon Impact Estimator
-            <Badge variant="outline" className="text-xs">
-              <Leaf className="w-3 h-3 mr-1" />
-              Climate Action
-            </Badge>
-          </CardTitle>
-          <CardDescription>
-            Calculate the carbon reduction potential of climate adaptation measures
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Calculator className="w-5 h-5" />
+                Carbon Impact Estimator
+                <Badge variant="outline" className="text-xs">
+                  <Leaf className="w-3 h-3 mr-1" />
+                  Climate Action
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                Calculate the carbon reduction potential of climate adaptation measures
+              </CardDescription>
+            </div>
+            {alertCount > 0 && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Bell className="w-3 h-3" />
+                {alertCount}
+              </Badge>
+            )}
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -364,60 +396,60 @@ export function CarbonImpactEstimator({ currentRiskLevel = 50, className }: Carb
                 </div>
               ) : calculation && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="border-green-200 bg-green-50/50">
+                  <Card className="border-green-300 bg-green-100 shadow-sm hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <Leaf className="w-5 h-5 text-green-600" />
-                        <h5 className="font-medium">Carbon Reduction</h5>
+                        <h5 className="font-medium text-green-800">Carbon Reduction</h5>
                       </div>
-                      <div className="text-2xl font-bold text-green-700">
+                      <div className="text-2xl font-bold text-green-800">
                         {(calculation.totalReduction / 1000).toFixed(1)} tonnes
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-green-600">
                         CO² over {timeHorizon} years
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card className="border-blue-200 bg-blue-50/50">
+                  <Card className="border-blue-300 bg-blue-100 shadow-sm hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <TrendingDown className="w-5 h-5 text-blue-600" />
-                        <h5 className="font-medium">Risk Reduction</h5>
+                        <h5 className="font-medium text-blue-800">Risk Reduction</h5>
                       </div>
-                      <div className="text-2xl font-bold text-blue-700">
+                      <div className="text-2xl font-bold text-blue-800">
                         {calculation.percentageImprovement.toFixed(1)}%
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-blue-600">
                         Climate risk improvement
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card className="border-orange-200 bg-orange-50/50">
+                  <Card className="border-orange-300 bg-orange-100 shadow-sm hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <Zap className="w-5 h-5 text-orange-600" />
-                        <h5 className="font-medium">Economic Benefit</h5>
+                        <h5 className="font-medium text-orange-800">Economic Benefit</h5>
                       </div>
-                      <div className="text-2xl font-bold text-orange-700">
+                      <div className="text-2xl font-bold text-orange-800">
                         ${calculation.yearlyBenefit.toFixed(0)}
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-orange-600">
                         Annual carbon value
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card className="border-purple-200 bg-purple-50/50">
+                  <Card className="border-purple-300 bg-purple-100 shadow-sm hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <Target className="w-5 h-5 text-purple-600" />
-                        <h5 className="font-medium">Effectiveness</h5>
+                        <h5 className="font-medium text-purple-800">Effectiveness</h5>
                       </div>
                       <div className="space-y-2">
                         <Progress value={calculation.costEffectiveness * 20} className="h-2" />
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-purple-600">
                           Cost-effectiveness score
                         </div>
                       </div>

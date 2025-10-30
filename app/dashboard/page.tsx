@@ -1,136 +1,186 @@
 "use client"
 
-import { Navbar } from "@/components/navbar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { GlobalHeatmap } from "@/components/enhanced-global-heatmap"
-import { RiskTrendChart } from "@/components/risk-trend-chart"
-import { RiskCards } from "@/components/risk-cards"
-import { ActionList } from "@/components/action-list"
-import { VoiceQA } from '@/components/voice-qa'
-import { CarbonImpactEstimator } from '@/components/carbon-impact-estimator'
-import { RealTimeAlerts } from '@/components/real-time-alerts'
-import { MapPin, TrendingUp, AlertTriangle, Shield, Mic, Calculator, Bell } from "lucide-react"
+import { Suspense, lazy, useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Navbar } from "@/components/navbar"
+import { LocationSelector, type Location, POPULAR_LOCATIONS } from "@/components/location-selector"
 
-export default function DashboardPage() {
+// Lazy load components for better performance
+const GlobalHeatmap = lazy(() => import("@/components/enhanced-global-heatmap").then(module => ({ default: module.GlobalHeatmap })))
+const RiskCards = lazy(() => import("@/components/risk-cards").then(module => ({ default: module.RiskCards })))
+const RiskTrendChart = lazy(() => import("@/components/risk-trend-chart").then(module => ({ default: module.RiskTrendChart })))
+const ActionList = lazy(() => import("@/components/action-list").then(module => ({ default: module.ActionList })))
+const VoiceQA = lazy(() => import('@/components/voice-qa').then(module => ({ default: module.VoiceQA })))
+import { RealClimateAlerts } from '@/components/real-climate-alerts'
+const LocationIntelligencePanel = lazy(() => import('@/components/location-intelligence-panel').then(module => ({ default: module.LocationIntelligencePanel })))
+const EconomicIntelligenceDashboard = lazy(() => import('@/components/economic-intelligence-dashboard').then(module => ({ default: module.EconomicIntelligenceDashboard })))
+const ActionRecommendationsDashboard = lazy(() => import('@/components/action-recommendations-dashboard').then(module => ({ default: module.ActionRecommendationsDashboard })))
+const RiskForecast = lazy(() => import('@/components/risk-forecast').then(module => ({ default: module.RiskForecast })))
+const VoiceAlertBanner = lazy(() => import('@/components/voice-alert-banner').then(module => ({ default: module.VoiceAlertBanner })))
+
+// Simple loading components
+const MapSkeleton = () => (
+  <div className="w-full h-[600px] bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
+)
+
+const CardSkeleton = () => (
+  <div className="space-y-3">
+    <Skeleton className="h-32 w-full" />
+    <Skeleton className="h-32 w-full" />
+    <Skeleton className="h-32 w-full" />
+    <Skeleton className="h-32 w-full" />
+  </div>
+)
+
+const ChartSkeleton = () => (
+  <div className="space-y-3">
+    <Skeleton className="h-96 w-full" />
+  </div>
+)
+
+export default function Dashboard() {
+  // Default location is New York City
+  const [selectedLocation, setSelectedLocation] = useState<Location>(
+    POPULAR_LOCATIONS.find(loc => loc.id === "new-york") || POPULAR_LOCATIONS[0]
+  )
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-
-      <div className="pt-16">
-        <div className="container mx-auto px-4 py-6">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold mb-2">Climate Risk Dashboard</h1>
-            <p className="text-muted-foreground">Real-time climate monitoring and risk assessment</p>
+      
+      {/* Intelligent Voice Alert System - Checks for real critical alerts every 2 minutes */}
+      <Suspense fallback={null}>
+        <VoiceAlertBanner location={selectedLocation} />
+      </Suspense>
+      
+      <div className="container mx-auto px-4 py-8 pt-24">
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight">ClimateGuard Dashboard</h1>
+              <p className="text-muted-foreground mt-2">Real-time climate risk monitoring and analysis</p>
+            </div>
+            <LocationSelector 
+              selectedLocation={selectedLocation}
+              onLocationChange={setSelectedLocation}
+            />
           </div>
-
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="alerts" className="flex items-center gap-1">
-                <Bell className="w-4 h-4" />
-                Alerts
-              </TabsTrigger>
-              <TabsTrigger value="voice" className="flex items-center gap-1">
-                <Mic className="w-4 h-4" />
-                Voice Q&A
-              </TabsTrigger>
-              <TabsTrigger value="carbon" className="flex items-center gap-1">
-                <Calculator className="w-4 h-4" />
-                Carbon Impact
-              </TabsTrigger>
-              <TabsTrigger value="actions">Actions</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-6">
-              <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-280px)]">
-                {/* Left Panel - World Map */}
-                <div className="lg:col-span-2">
-                  <Card className="h-full">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <MapPin className="w-5 h-5" />
-                        Global Climate Risk Map
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[calc(100%-80px)]">
-                      <GlobalHeatmap />
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Right Panel - Risk Status and Predictions */}
-                <div className="lg:col-span-1 space-y-6 overflow-y-auto">
-                  {/* Current Risk Status */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5" />
-                        Current Risk Status
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <RiskCards />
-                    </CardContent>
-                  </Card>
-
-                  {/* Next 10 Days Prediction */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5" />
-                        Next 10 Days Prediction
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-64">
-                      <RiskTrendChart />
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="alerts">
-              <RealTimeAlerts />
-            </TabsContent>
-
-            <TabsContent value="voice">
-              <VoiceQA />
-            </TabsContent>
-
-            <TabsContent value="carbon">
-              <CarbonImpactEstimator />
-            </TabsContent>
-
-            <TabsContent value="actions">
-              <div className="grid lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="w-5 h-5" />
-                      Recommended Actions
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="max-h-96 overflow-y-auto">
-                    <ActionList />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calculator className="w-5 h-5" />
-                      Impact Calculator
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CarbonImpactEstimator currentRiskLevel={65} />
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
         </div>
+        
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="alerts">Alerts</TabsTrigger>
+            <TabsTrigger value="location">Location</TabsTrigger>
+            <TabsTrigger value="economic">Economic</TabsTrigger>
+            <TabsTrigger value="actions">Actions</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="overview" className="space-y-8">
+            {/* Global Climate Map Section - Full Width at Top */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Global Climate Risk Map</CardTitle>
+                <CardDescription>Interactive visualization of worldwide climate risks and hotspots</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="w-full">
+                  <Suspense fallback={<MapSkeleton />}>
+                    <GlobalHeatmap />
+                  </Suspense>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Current Risk Assessment - Vertical Scrollable Cards */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Current Risk Assessment</CardTitle>
+                <CardDescription>Real-time climate risk indicators for {selectedLocation.name}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="max-h-[500px] overflow-y-auto pr-2">
+                  <Suspense fallback={<CardSkeleton />}>
+                    <RiskCards location={selectedLocation} />
+                  </Suspense>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 10-Day Risk Forecast Section - Full Width */}
+            <Suspense fallback={<ChartSkeleton />}>
+              <RiskForecast location={selectedLocation} />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="alerts" className="space-y-6">
+            <RealClimateAlerts />
+            
+            {/* Voice Assistant Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>AI Voice Assistant</CardTitle>
+                <CardDescription>Ask questions about climate data and get instant insights powered by Groq AI</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Suspense fallback={<ChartSkeleton />}>
+                  <VoiceQA location={selectedLocation} />
+                </Suspense>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="location" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Location Intelligence</CardTitle>
+                <CardDescription>Location-specific climate insights and recommendations</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Suspense fallback={<ChartSkeleton />}>
+                  <LocationIntelligencePanel />
+                </Suspense>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="economic" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Economic Impact Analysis</CardTitle>
+                <CardDescription>Financial implications and economic forecasting for climate risks</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Suspense fallback={<ChartSkeleton />}>
+                  <EconomicIntelligenceDashboard />
+                </Suspense>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="actions" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recommended Actions</CardTitle>
+                <CardDescription>Actionable insights and recommendations for climate risk mitigation</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <Suspense fallback={<ChartSkeleton />}>
+                    <ActionList />
+                  </Suspense>
+                  <Suspense fallback={<ChartSkeleton />}>
+                    <ActionRecommendationsDashboard />
+                  </Suspense>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+
+        </Tabs>
       </div>
     </div>
   )

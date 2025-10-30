@@ -1,4 +1,4 @@
-import { climateRiskPredictor } from "@/lib/ml-model";
+import { climateRiskPredictor } from "@/lib/ml-model-simple";
 
 export async function POST(request: Request) {
   try {
@@ -47,12 +47,14 @@ export async function POST(request: Request) {
 
     // Convert to percentage format for compatibility
     const response = {
-      flood_risk: Math.round(prediction.floodRisk * 100),
-      drought_risk: Math.round(prediction.droughtRisk * 100),
-      heatwave_risk: Math.round(prediction.heatwaveRisk * 100),
-      storm_risk: Math.round(prediction.stormRisk * 100),
+      flood_risk: Math.round(prediction.risks.flood * 100),
+      drought_risk: Math.round(prediction.risks.drought * 100),
+      heatwave_risk: Math.round(prediction.risks.heatwave * 100),
+      storm_risk: Math.round(prediction.risks.storm * 100),
       overall_risk: Math.round(prediction.overallRisk * 100),
+      overallRisk: prediction.overallRisk,
       confidence: prediction.confidence,
+      factors: prediction.factors,
       weather_data: {
         temperature: mlInput.temperature,
         precipitation: mlInput.precipitation,
@@ -64,7 +66,7 @@ export async function POST(request: Request) {
         latitude: mlInput.latitude,
         longitude: mlInput.longitude,
       },
-      model_info: climateRiskPredictor.getModelInfo(),
+      model_info: { type: "rule-based", version: "1.0" },
       timestamp: new Date().toISOString(),
     };
 
