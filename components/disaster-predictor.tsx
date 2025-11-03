@@ -50,7 +50,7 @@ interface DisasterPredictorProps {
   };
 }
 
-const DISASTER_ICONS = {
+const DISASTER_ICONS: Record<string, any> = {
   flood: Droplets,
   wildfire: Flame,
   hurricane: Wind,
@@ -60,6 +60,17 @@ const DISASTER_ICONS = {
   storm: CloudRain,
   drought: Sun,
   tsunami: TrendingUp,
+  blizzard: CloudRain,
+  cyclone: Wind,
+  landslide: AlertTriangle,
+  avalanche: AlertTriangle,
+  volcano: Flame,
+  thunderstorm: Zap,
+  lightning: Zap,
+  freezing: Sun,
+  heat: Sun,
+  wind: Wind,
+  rain: CloudRain,
 };
 
 const SEVERITY_COLORS = {
@@ -263,7 +274,7 @@ function PredictionCard({
   onSelect: () => void;
   isSelected: boolean;
 }) {
-  const Icon = DISASTER_ICONS[prediction.type];
+  const Icon = DISASTER_ICONS[prediction.type] || AlertTriangle; // Fallback to AlertTriangle if icon not found
   const timeUntilPeak = prediction.timeWindow.peakTime
     ? Math.round(
         (prediction.timeWindow.peakTime.getTime() - Date.now()) / (60 * 60 * 1000)

@@ -68,8 +68,8 @@ export default function Dashboard() {
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="adaptation">🎯 My Plan</TabsTrigger>
-            <TabsTrigger value="predictor">⚠️ 48h Forecast</TabsTrigger>
+            <TabsTrigger value="adaptation">My Plan</TabsTrigger>
+            <TabsTrigger value="predictor">48h Forecast</TabsTrigger>
             <TabsTrigger value="alerts">Alerts</TabsTrigger>
             <TabsTrigger value="location">Location</TabsTrigger>
             <TabsTrigger value="economic">Economic</TabsTrigger>
