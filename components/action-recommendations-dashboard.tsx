@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   CheckCircle2,
   Clock,
@@ -31,6 +32,7 @@ import {
   Play,
   Pause,
   CheckCircle,
+  X,
 } from 'lucide-react';
 import {
   usePersonalizedRecommendations,
@@ -77,11 +79,25 @@ const costColors = {
 export function ActionRecommendationsDashboard({ className }: ActionRecommendationsDashboardProps) {
   const [selectedTab, setSelectedTab] = useState('overview');
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
+  const [showPlanDialog, setShowPlanDialog] = useState(false);
+  const [locationRequested, setLocationRequested] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   
   // Get user location for personalized recommendations
-  const { location } = useLocationIntelligence();
+  const { location, enableLocation, isLoading: locationLoading, error: locationHookError } = useLocationIntelligence();
   const lat = location?.latitude || 40.7128; // Default to NYC
   const lng = location?.longitude || -74.0060;
+
+  // Request location on mount if not already available
+  React.useEffect(() => {
+    if (!location && !locationRequested && !locationLoading) {
+      setLocationRequested(true);
+      enableLocation().catch((err: any) => {
+        setLocationError(err?.message || 'Location access denied');
+      });
+    }
+  }, [location, locationRequested, locationLoading, enableLocation]);
 
   // Hooks for data
   const {
@@ -118,26 +134,26 @@ export function ActionRecommendationsDashboard({ className }: ActionRecommendati
     return (
       <Card className={`transition-all hover:shadow-md ${status === 'completed' ? 'bg-green-50 border-green-200' : ''}`}>
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-lg flex items-center gap-2">
-                {action.title}
-                {status === 'completed' && <CheckCircle2 className="w-5 h-5 text-green-600" />}
-                {status === 'in-progress' && <Clock className="w-5 h-5 text-orange-500" />}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+                <span className="break-words">{action.title}</span>
+                {status === 'completed' && <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />}
+                {status === 'in-progress' && <Clock className="w-5 h-5 text-orange-500 flex-shrink-0" />}
               </CardTitle>
-              <CardDescription className="mt-1">{action.description}</CardDescription>
+              <CardDescription className="mt-1 text-sm">{action.description}</CardDescription>
             </div>
-            <div className={`w-3 h-3 rounded-full ${priorityColors[action.priority as keyof typeof priorityColors] || priorityColors.medium}`} />
+            <div className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 ${priorityColors[action.priority as keyof typeof priorityColors] || priorityColors.medium}`} />
           </div>
           
           <div className="flex flex-wrap gap-2 mt-3">
-            <Badge variant="outline" className={urgencyColors[action.urgency as keyof typeof urgencyColors] || urgencyColors.immediate}>
+            <Badge variant="outline" className={`text-xs ${urgencyColors[action.urgency as keyof typeof urgencyColors] || urgencyColors.immediate}`}>
               {action.urgency.replace('-', ' ')}
             </Badge>
-            <Badge variant="outline" className={costColors[action.cost.range as keyof typeof costColors] || costColors.medium}>
+            <Badge variant="outline" className={`text-xs ${costColors[action.cost.range as keyof typeof costColors] || costColors.medium}`}>
               {action.cost.range} cost
             </Badge>
-            <Badge variant="outline">
+            <Badge variant="outline" className="text-xs">
               {difficultyIcons[action.difficulty as keyof typeof difficultyIcons] || difficultyIcons.easy} {action.difficulty}
             </Badge>
           </div>
@@ -145,36 +161,36 @@ export function ActionRecommendationsDashboard({ className }: ActionRecommendati
         
         <CardContent>
           {/* Impact Indicators */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-4 gap-3 mb-4">
             <div className="text-center">
-              <div className="text-sm text-muted-foreground">Environmental</div>
-              <div className="text-lg font-semibold text-green-600">{action.impact.environmental}%</div>
+              <div className="text-xs text-muted-foreground">Environmental</div>
+              <div className="text-base font-semibold text-green-600">{action.impact.environmental}%</div>
             </div>
             <div className="text-center">
-              <div className="text-sm text-muted-foreground">Economic</div>
-              <div className="text-lg font-semibold text-blue-600">{action.impact.economic}%</div>
+              <div className="text-xs text-muted-foreground">Economic</div>
+              <div className="text-base font-semibold text-blue-600">{action.impact.economic}%</div>
             </div>
             <div className="text-center">
-              <div className="text-sm text-muted-foreground">Social</div>
-              <div className="text-lg font-semibold text-purple-600">{action.impact.social}%</div>
+              <div className="text-xs text-muted-foreground">Social</div>
+              <div className="text-base font-semibold text-purple-600">{action.impact.social}%</div>
             </div>
             <div className="text-center">
-              <div className="text-sm text-muted-foreground">Overall</div>
-              <div className="text-lg font-semibold">{action.impact.overall}%</div>
+              <div className="text-xs text-muted-foreground">Overall</div>
+              <div className="text-base font-semibold">{action.impact.overall}%</div>
             </div>
           </div>
 
           {/* Benefits */}
           <div className="mb-4">
-            <h4 className="font-medium mb-2 flex items-center gap-2">
+            <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
               <Target className="w-4 h-4" />
               Key Benefits
             </h4>
             <ul className="space-y-1">
               {action.benefits.slice(0, 3).map((benefit: string, index: number) => (
-                <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                <li key={index} className="text-xs text-muted-foreground flex items-start gap-2">
                   <CheckCircle className="w-3 h-3 mt-0.5 text-green-500 flex-shrink-0" />
-                  {benefit}
+                  <span>{benefit}</span>
                 </li>
               ))}
             </ul>
@@ -295,7 +311,14 @@ export function ActionRecommendationsDashboard({ className }: ActionRecommendati
             </div>
           </div>
 
-          <Button variant="outline" className="w-full">
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => {
+              setSelectedPlan(plan);
+              setShowPlanDialog(true);
+            }}
+          >
             View Full Plan
           </Button>
         </div>
@@ -388,19 +411,41 @@ export function ActionRecommendationsDashboard({ className }: ActionRecommendati
 
         <TabsContent value="overview" className="space-y-6">
           {/* Location Profile */}
-          {profile && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
-                  Your Location Profile
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5" />
+                Your Location Profile
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!location && (
+                <div className="text-center py-6">
+                  <MapPin className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground mb-4">
+                    Enable location access to get personalized climate recommendations for your area
+                  </p>
+                  <Button onClick={enableLocation} disabled={locationLoading}>
+                    {locationLoading ? 'Requesting...' : 'Enable Location Access'}
+                  </Button>
+                  {locationError && (
+                    <Alert className="mt-4">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>{locationError}</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+              {profile && location && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <h4 className="font-medium mb-2">Location</h4>
-                    <p className="text-sm text-muted-foreground">{profile.location.address}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {profile.location.address}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {location.latitude.toFixed(4)}°, {location.longitude.toFixed(4)}°
+                    </p>
                   </div>
                   <div>
                     <h4 className="font-medium mb-2">Key Risks</h4>
@@ -421,9 +466,9 @@ export function ActionRecommendationsDashboard({ className }: ActionRecommendati
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -571,6 +616,101 @@ export function ActionRecommendationsDashboard({ className }: ActionRecommendati
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Emergency Plan Dialog */}
+      <Dialog open={showPlanDialog} onOpenChange={setShowPlanDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-red-500" />
+              {selectedPlan?.title}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedPlan?.description}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPlan && (
+            <div className="space-y-6 mt-4">
+              {/* Trigger Conditions */}
+              <div>
+                <h3 className="font-semibold mb-2 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-orange-500" />
+                  Trigger Conditions
+                </h3>
+                <ul className="space-y-2">
+                  {selectedPlan.triggerConditions.map((condition: string, index: number) => (
+                    <li key={index} className="text-sm text-muted-foreground flex items-start gap-2 pl-4">
+                      <span className="text-orange-500">•</span>
+                      {condition}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <Separator />
+
+              {/* Emergency Phases */}
+              <div>
+                <h3 className="font-semibold mb-3">Emergency Response Phases</h3>
+                {selectedPlan.phases.map((phase: any, phaseIndex: number) => (
+                  <div key={phaseIndex} className="mb-4">
+                    <h4 className="font-medium text-sm uppercase text-primary mb-2">
+                      {phase.phase} Phase
+                    </h4>
+                    <div className="space-y-2">
+                      {phase.actions.map((action: any, actionIndex: number) => (
+                        <div key={actionIndex} className="flex items-start gap-2 text-sm p-2 bg-muted/50 rounded">
+                          {action.critical && <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5" />}
+                          <div className="flex-1">
+                            <div className="font-medium">{action.action}</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Timeline: {action.timeframe} • Responsible: {action.responsible}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Separator />
+
+              {/* Emergency Contacts */}
+              <div>
+                <h3 className="font-semibold mb-2">Emergency Contacts</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {selectedPlan.communication.contacts.map((contact: any, index: number) => (
+                    <div key={index} className="flex justify-between p-2 bg-muted/50 rounded text-sm">
+                      <span className="font-medium">{contact.name}</span>
+                      <span className="font-mono text-primary">{contact.number}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Resources */}
+              <div>
+                <h3 className="font-semibold mb-2">Essential Resources</h3>
+                <div className="space-y-2">
+                  {selectedPlan.resources.filter((r: any) => r.priority === 'essential').slice(0, 5).map((resource: any, index: number) => (
+                    <div key={index} className="flex items-start gap-2 text-sm p-2 border rounded">
+                      <Badge variant="outline" className="text-xs">{resource.type}</Badge>
+                      <div className="flex-1">
+                        <div className="font-medium">{resource.name}</div>
+                        <div className="text-xs text-muted-foreground">{resource.details}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
