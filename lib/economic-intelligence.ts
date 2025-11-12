@@ -125,7 +125,11 @@ class EconomicIntelligenceService {
     try {
       // Check cache first (cache for 1 hour)
       const cached = this.economicDataCache.get(countryCode);
-      if (cached && this.lastUpdate && Date.now() - this.lastUpdate.getTime() < 3600000) {
+      if (
+        cached &&
+        this.lastUpdate &&
+        Date.now() - this.lastUpdate.getTime() < 3600000
+      ) {
         return cached;
       }
 
@@ -140,7 +144,7 @@ class EconomicIntelligenceService {
         `[EconomicIntelligence] Error fetching data for ${countryCode}:`,
         error
       );
-      
+
       // Fallback to basic data if API fails
       const fallbackData = this.getFallbackEconomicData(countryCode);
       return fallbackData;
@@ -150,37 +154,63 @@ class EconomicIntelligenceService {
   /**
    * Fetch REAL economic data from World Bank API
    */
-  private async fetchRealWorldBankData(countryCode: string): Promise<EconomicData> {
+  private async fetchRealWorldBankData(
+    countryCode: string
+  ): Promise<EconomicData> {
     try {
       const currentYear = new Date().getFullYear();
       const lastYear = currentYear - 1;
-      
+
       // World Bank API endpoints
-      const baseUrl = 'https://api.worldbank.org/v2';
-      
+      const baseUrl = "https://api.worldbank.org/v2";
+
       // Fetch multiple indicators in parallel
-      const [gdpData, gdpPerCapitaData, gdpGrowthData, populationData, countryInfo] = await Promise.all([
+      const [
+        gdpData,
+        gdpPerCapitaData,
+        gdpGrowthData,
+        populationData,
+        countryInfo,
+      ] = await Promise.all([
         // GDP (current US$) - NY.GDP.MKTP.CD
-        fetch(`${baseUrl}/country/${countryCode}/indicator/NY.GDP.MKTP.CD?format=json&date=${lastYear-2}:${lastYear}&per_page=5`).then(r => r.json()),
-        
+        fetch(
+          `${baseUrl}/country/${countryCode}/indicator/NY.GDP.MKTP.CD?format=json&date=${
+            lastYear - 2
+          }:${lastYear}&per_page=5`
+        ).then((r) => r.json()),
+
         // GDP per capita (current US$) - NY.GDP.PCAP.CD
-        fetch(`${baseUrl}/country/${countryCode}/indicator/NY.GDP.PCAP.CD?format=json&date=${lastYear-2}:${lastYear}&per_page=5`).then(r => r.json()),
-        
+        fetch(
+          `${baseUrl}/country/${countryCode}/indicator/NY.GDP.PCAP.CD?format=json&date=${
+            lastYear - 2
+          }:${lastYear}&per_page=5`
+        ).then((r) => r.json()),
+
         // GDP growth (annual %) - NY.GDP.MKTP.KD.ZG
-        fetch(`${baseUrl}/country/${countryCode}/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=${lastYear-2}:${lastYear}&per_page=5`).then(r => r.json()),
-        
+        fetch(
+          `${baseUrl}/country/${countryCode}/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=${
+            lastYear - 2
+          }:${lastYear}&per_page=5`
+        ).then((r) => r.json()),
+
         // Population - SP.POP.TOTL
-        fetch(`${baseUrl}/country/${countryCode}/indicator/SP.POP.TOTL?format=json&date=${lastYear-2}:${lastYear}&per_page=5`).then(r => r.json()),
-        
+        fetch(
+          `${baseUrl}/country/${countryCode}/indicator/SP.POP.TOTL?format=json&date=${
+            lastYear - 2
+          }:${lastYear}&per_page=5`
+        ).then((r) => r.json()),
+
         // Country metadata
-        fetch(`${baseUrl}/country/${countryCode}?format=json`).then(r => r.json())
+        fetch(`${baseUrl}/country/${countryCode}?format=json`).then((r) =>
+          r.json()
+        ),
       ]);
 
       // Extract country info
       const countryMetadata = countryInfo[1]?.[0];
-      const countryName = countryMetadata?.name || 'Unknown';
-      const region = countryMetadata?.region?.value || 'Unknown';
-      const incomeLevel = countryMetadata?.incomeLevel?.value || 'Unknown';
+      const countryName = countryMetadata?.name || "Unknown";
+      const region = countryMetadata?.region?.value || "Unknown";
+      const incomeLevel = countryMetadata?.incomeLevel?.value || "Unknown";
 
       // Extract latest GDP data (in billions)
       const latestGDP = gdpData[1]?.find((d: any) => d.value !== null);
@@ -188,7 +218,9 @@ class EconomicIntelligenceService {
       const gdpYear = latestGDP ? parseInt(latestGDP.date) : lastYear;
 
       // Extract GDP per capita
-      const latestGDPPerCapita = gdpPerCapitaData[1]?.find((d: any) => d.value !== null);
+      const latestGDPPerCapita = gdpPerCapitaData[1]?.find(
+        (d: any) => d.value !== null
+      );
       const gdpPerCapita = latestGDPPerCapita ? latestGDPPerCapita.value : 0;
 
       // Extract GDP growth rate
@@ -196,19 +228,24 @@ class EconomicIntelligenceService {
       const growthRate = latestGrowth ? latestGrowth.value : 0;
 
       // Extract population
-      const latestPopulation = populationData[1]?.find((d: any) => d.value !== null);
+      const latestPopulation = populationData[1]?.find(
+        (d: any) => d.value !== null
+      );
       const population = latestPopulation ? latestPopulation.value : 0;
 
       // Calculate climate vulnerability based on geographic and economic factors
       const vulnerability = await this.calculateRealClimateVulnerability(
-        countryCode, 
-        region, 
+        countryCode,
+        region,
         gdpPerCapita,
         population
       );
 
       // Calculate climate costs based on GDP and vulnerability
-      const climateCosts = this.calculateClimateCosts(gdpBillions, vulnerability.score);
+      const climateCosts = this.calculateClimateCosts(
+        gdpBillions,
+        vulnerability.score
+      );
 
       // Get sector data based on real economic structure
       const sectors = await this.fetchRealSectorData(countryCode, gdpBillions);
@@ -229,7 +266,10 @@ class EconomicIntelligenceService {
         sectors,
       };
     } catch (error) {
-      console.error(`[EconomicIntelligence] Error fetching World Bank data:`, error);
+      console.error(
+        `[EconomicIntelligence] Error fetching World Bank data:`,
+        error
+      );
       throw error;
     }
   }
@@ -242,56 +282,77 @@ class EconomicIntelligenceService {
     region: string,
     gdpPerCapita: number,
     population: number
-  ): Promise<EconomicData['economicVulnerability']> {
+  ): Promise<EconomicData["economicVulnerability"]> {
     try {
       // Fetch climate-related indicators from World Bank
-      const baseUrl = 'https://api.worldbank.org/v2';
+      const baseUrl = "https://api.worldbank.org/v2";
       const currentYear = new Date().getFullYear();
       const lastYear = currentYear - 1;
 
       const [agData, urbanData, forestData] = await Promise.all([
         // Agriculture, forestry, and fishing, value added (% of GDP) - NV.AGR.TOTL.ZS
-        fetch(`${baseUrl}/country/${countryCode}/indicator/NV.AGR.TOTL.ZS?format=json&date=${lastYear-5}:${lastYear}&per_page=10`).then(r => r.json()),
-        
+        fetch(
+          `${baseUrl}/country/${countryCode}/indicator/NV.AGR.TOTL.ZS?format=json&date=${
+            lastYear - 5
+          }:${lastYear}&per_page=10`
+        ).then((r) => r.json()),
+
         // Urban population (% of total) - SP.URB.TOTL.IN.ZS
-        fetch(`${baseUrl}/country/${countryCode}/indicator/SP.URB.TOTL.IN.ZS?format=json&date=${lastYear-5}:${lastYear}&per_page=10`).then(r => r.json()),
-        
+        fetch(
+          `${baseUrl}/country/${countryCode}/indicator/SP.URB.TOTL.IN.ZS?format=json&date=${
+            lastYear - 5
+          }:${lastYear}&per_page=10`
+        ).then((r) => r.json()),
+
         // Forest area (% of land area) - AG.LND.FRST.ZS
-        fetch(`${baseUrl}/country/${countryCode}/indicator/AG.LND.FRST.ZS?format=json&date=${lastYear-5}:${lastYear}&per_page=10`).then(r => r.json()),
+        fetch(
+          `${baseUrl}/country/${countryCode}/indicator/AG.LND.FRST.ZS?format=json&date=${
+            lastYear - 5
+          }:${lastYear}&per_page=10`
+        ).then((r) => r.json()),
       ]);
 
       // Extract values
-      const agricultureDependency = agData[1]?.find((d: any) => d.value !== null)?.value || 10;
-      const urbanPopulation = urbanData[1]?.find((d: any) => d.value !== null)?.value || 50;
-      const forestCover = forestData[1]?.find((d: any) => d.value !== null)?.value || 30;
+      const agricultureDependency =
+        agData[1]?.find((d: any) => d.value !== null)?.value || 10;
+      const urbanPopulation =
+        urbanData[1]?.find((d: any) => d.value !== null)?.value || 50;
+      const forestCover =
+        forestData[1]?.find((d: any) => d.value !== null)?.value || 30;
 
       // Calculate coastal exposure based on region and population density
       const coastalExposure = this.estimateCoastalExposure(region, countryCode);
 
       // Calculate infrastructure age (inverse of GDP per capita - richer countries have newer infrastructure)
-      const infrastructureAge = Math.max(0, Math.min(100, 100 - (gdpPerCapita / 1000)));
+      const infrastructureAge = Math.max(
+        0,
+        Math.min(100, 100 - gdpPerCapita / 1000)
+      );
 
       // Insurance penetration (higher GDP per capita = better insurance)
-      const insurancePenetration = Math.min(100, (gdpPerCapita / 500));
+      const insurancePenetration = Math.min(100, gdpPerCapita / 500);
 
       // Social safety (based on income level and urbanization)
-      const socialSafety = Math.min(100, (gdpPerCapita / 800) + (urbanPopulation / 2));
+      const socialSafety = Math.min(
+        100,
+        gdpPerCapita / 800 + urbanPopulation / 2
+      );
 
       // Calculate resilience (inverse of vulnerability factors)
       const resilience = Math.round(
         (100 - infrastructureAge) * 0.3 +
-        insurancePenetration * 0.3 +
-        socialSafety * 0.2 +
-        (100 - agricultureDependency) * 0.2
+          insurancePenetration * 0.3 +
+          socialSafety * 0.2 +
+          (100 - agricultureDependency) * 0.2
       );
 
       // Calculate overall vulnerability score
       const vulnerabilityScore = Math.round(
         agricultureDependency * 0.25 +
-        coastalExposure * 0.25 +
-        infrastructureAge * 0.2 +
-        (100 - insurancePenetration) * 0.15 +
-        (100 - socialSafety) * 0.15
+          coastalExposure * 0.25 +
+          infrastructureAge * 0.2 +
+          (100 - insurancePenetration) * 0.15 +
+          (100 - socialSafety) * 0.15
       );
 
       return {
@@ -306,7 +367,10 @@ class EconomicIntelligenceService {
         resilience: Math.max(0, Math.min(100, resilience)),
       };
     } catch (error) {
-      console.error('[EconomicIntelligence] Error calculating vulnerability:', error);
+      console.error(
+        "[EconomicIntelligence] Error calculating vulnerability:",
+        error
+      );
       // Return moderate defaults if API fails
       return {
         score: 50,
@@ -327,22 +391,33 @@ class EconomicIntelligenceService {
    */
   private estimateCoastalExposure(region: string, countryCode: string): number {
     // High coastal exposure countries
-    const highCoastal = ['NLD', 'BGD', 'MDV', 'IDN', 'PHL', 'JPN', 'GBR', 'ITA', 'GRC', 'ESP'];
+    const highCoastal = [
+      "NLD",
+      "BGD",
+      "MDV",
+      "IDN",
+      "PHL",
+      "JPN",
+      "GBR",
+      "ITA",
+      "GRC",
+      "ESP",
+    ];
     if (highCoastal.includes(countryCode)) return 85;
 
     // Island nations
-    const islands = ['CUB', 'JAM', 'HT', 'DOM', 'FJI', 'TON', 'WSM', 'VUT'];
+    const islands = ["CUB", "JAM", "HT", "DOM", "FJI", "TON", "WSM", "VUT"];
     if (islands.includes(countryCode)) return 95;
 
     // By region
     const regionalExposure: { [key: string]: number } = {
-      'East Asia & Pacific': 70,
-      'South Asia': 65,
-      'Europe & Central Asia': 45,
-      'Middle East & North Africa': 55,
-      'Latin America & Caribbean': 60,
-      'Sub-Saharan Africa': 50,
-      'North America': 50,
+      "East Asia & Pacific": 70,
+      "South Asia": 65,
+      "Europe & Central Asia": 45,
+      "Middle East & North Africa": 55,
+      "Latin America & Caribbean": 60,
+      "Sub-Saharan Africa": 50,
+      "North America": 50,
     };
 
     return regionalExposure[region] || 50;
@@ -351,16 +426,19 @@ class EconomicIntelligenceService {
   /**
    * Calculate climate costs based on GDP and vulnerability
    */
-  private calculateClimateCosts(gdpBillions: number, vulnerabilityScore: number): EconomicData['climateCosts'] {
+  private calculateClimateCosts(
+    gdpBillions: number,
+    vulnerabilityScore: number
+  ): EconomicData["climateCosts"] {
     // Climate costs typically range from 1-8% of GDP depending on vulnerability
     // Low vulnerability (0-30): 1-2% of GDP
     // Medium vulnerability (30-60): 2-4% of GDP
     // High vulnerability (60-100): 4-8% of GDP
-    
+
     const basePercentage = 1 + (vulnerabilityScore / 100) * 7; // 1-8%
     const annualDamages = gdpBillions * (basePercentage / 100);
     const adaptationCosts = annualDamages * 0.6; // Adaptation costs ~60% of damages
-    
+
     // Projected increase based on IPCC scenarios (25-100% increase by 2050)
     const projectedIncrease = 25 + (vulnerabilityScore / 100) * 75;
 
@@ -375,26 +453,44 @@ class EconomicIntelligenceService {
   /**
    * Fetch real sector data from World Bank
    */
-  private async fetchRealSectorData(countryCode: string, gdpBillions: number): Promise<EconomicData['sectors']> {
+  private async fetchRealSectorData(
+    countryCode: string,
+    gdpBillions: number
+  ): Promise<EconomicData["sectors"]> {
     try {
-      const baseUrl = 'https://api.worldbank.org/v2';
+      const baseUrl = "https://api.worldbank.org/v2";
       const currentYear = new Date().getFullYear();
       const lastYear = currentYear - 1;
 
       const [agData, industryData, servicesData] = await Promise.all([
         // Agriculture % of GDP
-        fetch(`${baseUrl}/country/${countryCode}/indicator/NV.AGR.TOTL.ZS?format=json&date=${lastYear-3}:${lastYear}&per_page=5`).then(r => r.json()),
-        
+        fetch(
+          `${baseUrl}/country/${countryCode}/indicator/NV.AGR.TOTL.ZS?format=json&date=${
+            lastYear - 3
+          }:${lastYear}&per_page=5`
+        ).then((r) => r.json()),
+
         // Industry % of GDP
-        fetch(`${baseUrl}/country/${countryCode}/indicator/NV.IND.TOTL.ZS?format=json&date=${lastYear-3}:${lastYear}&per_page=5`).then(r => r.json()),
-        
+        fetch(
+          `${baseUrl}/country/${countryCode}/indicator/NV.IND.TOTL.ZS?format=json&date=${
+            lastYear - 3
+          }:${lastYear}&per_page=5`
+        ).then((r) => r.json()),
+
         // Services % of GDP
-        fetch(`${baseUrl}/country/${countryCode}/indicator/NV.SRV.TOTL.ZS?format=json&date=${lastYear-3}:${lastYear}&per_page=5`).then(r => r.json()),
+        fetch(
+          `${baseUrl}/country/${countryCode}/indicator/NV.SRV.TOTL.ZS?format=json&date=${
+            lastYear - 3
+          }:${lastYear}&per_page=5`
+        ).then((r) => r.json()),
       ]);
 
-      const agPercent = agData[1]?.find((d: any) => d.value !== null)?.value || 5;
-      const industryPercent = industryData[1]?.find((d: any) => d.value !== null)?.value || 30;
-      const servicesPercent = servicesData[1]?.find((d: any) => d.value !== null)?.value || 65;
+      const agPercent =
+        agData[1]?.find((d: any) => d.value !== null)?.value || 5;
+      const industryPercent =
+        industryData[1]?.find((d: any) => d.value !== null)?.value || 30;
+      const servicesPercent =
+        servicesData[1]?.find((d: any) => d.value !== null)?.value || 65;
 
       // Calculate employment (rough estimate based on sector size and development level)
       const totalEmploymentMillions = gdpBillions / 50; // Rough estimate
@@ -404,35 +500,64 @@ class EconomicIntelligenceService {
           gdpContribution: Math.round(agPercent * 10) / 10,
           climateRisk: Math.min(100, 70 + agPercent), // Higher ag dependency = higher risk
           adaptationPotential: 60,
-          employmentImpact: Math.round(totalEmploymentMillions * (agPercent / 100) * 10) / 10,
+          employmentImpact:
+            Math.round(totalEmploymentMillions * (agPercent / 100) * 10) / 10,
         },
         manufacturing: {
           gdpContribution: Math.round(industryPercent * 10) / 10,
           climateRisk: 45,
           adaptationPotential: 70,
-          employmentImpact: Math.round(totalEmploymentMillions * (industryPercent / 100) * 10) / 10,
+          employmentImpact:
+            Math.round(totalEmploymentMillions * (industryPercent / 100) * 10) /
+            10,
         },
         services: {
           gdpContribution: Math.round(servicesPercent * 10) / 10,
           climateRisk: 35,
           adaptationPotential: 80,
-          employmentImpact: Math.round(totalEmploymentMillions * (servicesPercent / 100) * 10) / 10,
+          employmentImpact:
+            Math.round(totalEmploymentMillions * (servicesPercent / 100) * 10) /
+            10,
         },
         tourism: {
           gdpContribution: Math.round(servicesPercent * 0.15 * 10) / 10, // Tourism ~15% of services
           climateRisk: 75,
           adaptationPotential: 50,
-          employmentImpact: Math.round(totalEmploymentMillions * 0.08 * 10) / 10,
+          employmentImpact:
+            Math.round(totalEmploymentMillions * 0.08 * 10) / 10,
         },
       };
     } catch (error) {
-      console.error('[EconomicIntelligence] Error fetching sector data:', error);
+      console.error(
+        "[EconomicIntelligence] Error fetching sector data:",
+        error
+      );
       // Return reasonable defaults
       return {
-        agriculture: { gdpContribution: 5, climateRisk: 75, adaptationPotential: 60, employmentImpact: 10 },
-        manufacturing: { gdpContribution: 25, climateRisk: 45, adaptationPotential: 70, employmentImpact: 50 },
-        services: { gdpContribution: 65, climateRisk: 35, adaptationPotential: 80, employmentImpact: 100 },
-        tourism: { gdpContribution: 8, climateRisk: 75, adaptationPotential: 50, employmentImpact: 15 },
+        agriculture: {
+          gdpContribution: 5,
+          climateRisk: 75,
+          adaptationPotential: 60,
+          employmentImpact: 10,
+        },
+        manufacturing: {
+          gdpContribution: 25,
+          climateRisk: 45,
+          adaptationPotential: 70,
+          employmentImpact: 50,
+        },
+        services: {
+          gdpContribution: 65,
+          climateRisk: 35,
+          adaptationPotential: 80,
+          employmentImpact: 100,
+        },
+        tourism: {
+          gdpContribution: 8,
+          climateRisk: 75,
+          adaptationPotential: 50,
+          employmentImpact: 15,
+        },
       };
     }
   }
@@ -442,23 +567,104 @@ class EconomicIntelligenceService {
    */
   private getFallbackEconomicData(countryCode: string): EconomicData {
     const fallbackCountries: { [key: string]: EconomicData } = {
+      IN: {
+        country: "India",
+        countryCode: "IN",
+        region: "South Asia",
+        incomeLevel: "Lower middle income",
+        gdp: { total: 3870, perCapita: 2730, growthRate: 7.2, year: 2024 },
+        climateCosts: {
+          annualDamages: 232,
+          adaptationCosts: 139,
+          percentageOfGDP: 6.0,
+          projectedIncrease: 70,
+        },
+        economicVulnerability: {
+          score: 68,
+          factors: {
+            agricultureDependency: 17.8,
+            coastalExposure: 72,
+            infrastructureAge: 62,
+            insurancePenetration: 28,
+            socialSafety: 42,
+          },
+          resilience: 48,
+        },
+        sectors: {
+          agriculture: {
+            gdpContribution: 17.8,
+            climateRisk: 88,
+            adaptationPotential: 55,
+            employmentImpact: 13.8,
+          },
+          manufacturing: {
+            gdpContribution: 25.9,
+            climateRisk: 52,
+            adaptationPotential: 68,
+            employmentImpact: 20.0,
+          },
+          services: {
+            gdpContribution: 49.0,
+            climateRisk: 42,
+            adaptationPotential: 72,
+            employmentImpact: 37.9,
+          },
+          tourism: {
+            gdpContribution: 6.8,
+            climateRisk: 78,
+            adaptationPotential: 58,
+            employmentImpact: 6.2,
+          },
+        },
+      },
       US: {
         country: "United States",
         countryCode: "US",
         region: "North America",
         incomeLevel: "High income",
         gdp: { total: 27360, perCapita: 81695, growthRate: 2.5, year: 2024 },
-        climateCosts: { annualDamages: 820, adaptationCosts: 492, percentageOfGDP: 3.0, projectedIncrease: 45 },
+        climateCosts: {
+          annualDamages: 820,
+          adaptationCosts: 492,
+          percentageOfGDP: 3.0,
+          projectedIncrease: 45,
+        },
         economicVulnerability: {
           score: 42,
-          factors: { agricultureDependency: 0.9, coastalExposure: 65, infrastructureAge: 45, insurancePenetration: 88, socialSafety: 75 },
+          factors: {
+            agricultureDependency: 0.9,
+            coastalExposure: 65,
+            infrastructureAge: 45,
+            insurancePenetration: 88,
+            socialSafety: 75,
+          },
           resilience: 68,
         },
         sectors: {
-          agriculture: { gdpContribution: 0.9, climateRisk: 72, adaptationPotential: 75, employmentImpact: 4.5 },
-          manufacturing: { gdpContribution: 18.2, climateRisk: 40, adaptationPotential: 80, employmentImpact: 99.7 },
-          services: { gdpContribution: 77.4, climateRisk: 28, adaptationPotential: 85, employmentImpact: 443.2 },
-          tourism: { gdpContribution: 7.8, climateRisk: 65, adaptationPotential: 60, employmentImpact: 43.7 },
+          agriculture: {
+            gdpContribution: 0.9,
+            climateRisk: 72,
+            adaptationPotential: 75,
+            employmentImpact: 4.5,
+          },
+          manufacturing: {
+            gdpContribution: 18.2,
+            climateRisk: 40,
+            adaptationPotential: 80,
+            employmentImpact: 99.7,
+          },
+          services: {
+            gdpContribution: 77.4,
+            climateRisk: 28,
+            adaptationPotential: 85,
+            employmentImpact: 443.2,
+          },
+          tourism: {
+            gdpContribution: 7.8,
+            climateRisk: 65,
+            adaptationPotential: 60,
+            employmentImpact: 43.7,
+          },
         },
       },
       CN: {
@@ -467,22 +673,103 @@ class EconomicIntelligenceService {
         region: "East Asia & Pacific",
         incomeLevel: "Upper middle income",
         gdp: { total: 17890, perCapita: 12720, growthRate: 5.2, year: 2024 },
-        climateCosts: { annualDamages: 895, adaptationCosts: 537, percentageOfGDP: 5.0, projectedIncrease: 60 },
+        climateCosts: {
+          annualDamages: 895,
+          adaptationCosts: 537,
+          percentageOfGDP: 5.0,
+          projectedIncrease: 60,
+        },
         economicVulnerability: {
           score: 58,
-          factors: { agricultureDependency: 7.3, coastalExposure: 75, infrastructureAge: 38, insurancePenetration: 45, socialSafety: 62 },
+          factors: {
+            agricultureDependency: 7.3,
+            coastalExposure: 75,
+            infrastructureAge: 38,
+            insurancePenetration: 45,
+            socialSafety: 62,
+          },
           resilience: 55,
         },
         sectors: {
-          agriculture: { gdpContribution: 7.3, climateRisk: 82, adaptationPotential: 65, employmentImpact: 26.1 },
-          manufacturing: { gdpContribution: 38.6, climateRisk: 48, adaptationPotential: 72, employmentImpact: 138.2 },
-          services: { gdpContribution: 54.1, climateRisk: 35, adaptationPotential: 75, employmentImpact: 193.6 },
-          tourism: { gdpContribution: 4.5, climateRisk: 70, adaptationPotential: 55, employmentImpact: 28.7 },
+          agriculture: {
+            gdpContribution: 7.3,
+            climateRisk: 82,
+            adaptationPotential: 65,
+            employmentImpact: 26.1,
+          },
+          manufacturing: {
+            gdpContribution: 38.6,
+            climateRisk: 48,
+            adaptationPotential: 72,
+            employmentImpact: 138.2,
+          },
+          services: {
+            gdpContribution: 54.1,
+            climateRisk: 35,
+            adaptationPotential: 75,
+            employmentImpact: 193.6,
+          },
+          tourism: {
+            gdpContribution: 4.5,
+            climateRisk: 70,
+            adaptationPotential: 55,
+            employmentImpact: 28.7,
+          },
+        },
+      },
+      BR: {
+        country: "Brazil",
+        countryCode: "BR",
+        region: "Latin America & Caribbean",
+        incomeLevel: "Upper middle income",
+        gdp: { total: 2170, perCapita: 10180, growthRate: 2.9, year: 2024 },
+        climateCosts: {
+          annualDamages: 152,
+          adaptationCosts: 91,
+          percentageOfGDP: 7.0,
+          projectedIncrease: 75,
+        },
+        economicVulnerability: {
+          score: 72,
+          factors: {
+            agricultureDependency: 6.7,
+            coastalExposure: 68,
+            infrastructureAge: 55,
+            insurancePenetration: 32,
+            socialSafety: 48,
+          },
+          resilience: 45,
+        },
+        sectors: {
+          agriculture: {
+            gdpContribution: 6.7,
+            climateRisk: 85,
+            adaptationPotential: 52,
+            employmentImpact: 2.9,
+          },
+          manufacturing: {
+            gdpContribution: 18.5,
+            climateRisk: 48,
+            adaptationPotential: 65,
+            employmentImpact: 8.0,
+          },
+          services: {
+            gdpContribution: 63.5,
+            climateRisk: 38,
+            adaptationPotential: 70,
+            employmentImpact: 27.5,
+          },
+          tourism: {
+            gdpContribution: 8.1,
+            climateRisk: 82,
+            adaptationPotential: 48,
+            employmentImpact: 3.5,
+          },
         },
       },
     };
 
-    return fallbackCountries[countryCode] || fallbackCountries.US;
+    return fallbackCountries[countryCode] || fallbackCountries.IN;
   }
 
   /**
@@ -660,8 +947,6 @@ class EconomicIntelligenceService {
       throw error;
     }
   }
-
-
 
   /**
    * Calculate business risk profile

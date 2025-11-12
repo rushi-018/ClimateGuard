@@ -42,9 +42,9 @@ export function EconomicIntelligenceDashboard({
   className,
   compact = false 
 }: EconomicIntelligenceDashboardProps) {
-  const [selectedCountry, setSelectedCountry] = useState("US")
-  const [comparisonCountries, setComparisonCountries] = useState(["US", "CN", "DE", "BR"])
-  const [selectedRegion, setSelectedRegion] = useState("North America")
+  const [selectedCountry, setSelectedCountry] = useState("IN")
+  const [comparisonCountries, setComparisonCountries] = useState(["IN", "US", "CN", "BR"])
+  const [selectedRegion, setSelectedRegion] = useState("South Asia")
   const [businessSector, setBusinessSector] = useState("technology")
   const [businessSize, setBusinessSize] = useState<"small" | "medium" | "large" | "enterprise">("medium")
 

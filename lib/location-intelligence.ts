@@ -300,19 +300,25 @@ class LocationIntelligenceService {
 
       // Fetch REAL weather data from Open-Meteo API
       const weatherData = await this.fetchRealWeatherData(latitude, longitude);
-      
+
       // Fetch REAL risk assessment using ML model (same as dashboard)
       const riskData = await this.fetchRealRiskData(latitude, longitude);
 
       // Get nearby alerts count (within 50km radius)
-      const nearbyAlertsCount = await this.countNearbyAlerts(latitude, longitude);
+      const nearbyAlertsCount = await this.countNearbyAlerts(
+        latitude,
+        longitude
+      );
 
       const riskAssessment: LocationRiskAssessment = {
         location: this.currentLocation,
         overallRisk: riskData.overallRisk,
         riskFactors: riskData.riskFactors,
         localWeather: weatherData,
-        recommendations: this.generateSmartRecommendations(riskData.riskFactors, nearbyAlertsCount),
+        recommendations: this.generateSmartRecommendations(
+          riskData.riskFactors,
+          nearbyAlertsCount
+        ),
         lastUpdated: new Date(),
       };
 
@@ -321,7 +327,7 @@ class LocationIntelligenceService {
     } catch (error) {
       console.error("[LocationIntelligence] Risk assessment error:", error);
       this.notifyError("Failed to update location-based risk assessment");
-      
+
       // Fallback: use last known data or minimal data
       if (!this.riskAssessment) {
         this.riskAssessment = this.getFallbackRiskAssessment();
@@ -333,7 +339,10 @@ class LocationIntelligenceService {
   /**
    * Fetch REAL weather data from Open-Meteo API
    */
-  private async fetchRealWeatherData(lat: number, lon: number): Promise<{
+  private async fetchRealWeatherData(
+    lat: number,
+    lon: number
+  ): Promise<{
     temperature: number;
     humidity: number;
     windSpeed: number;
@@ -372,7 +381,10 @@ class LocationIntelligenceService {
   /**
    * Fetch REAL risk data using ML model (same logic as dashboard)
    */
-  private async fetchRealRiskData(lat: number, lon: number): Promise<{
+  private async fetchRealRiskData(
+    lat: number,
+    lon: number
+  ): Promise<{
     overallRisk: number;
     riskFactors: {
       flooding: number;
@@ -385,14 +397,14 @@ class LocationIntelligenceService {
   }> {
     try {
       // Call the same ML model prediction endpoint used in dashboard
-      const response = await fetch('/api/predict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           latitude: lat,
           longitude: lon,
-          date: new Date().toISOString().split('T')[0]
-        })
+          date: new Date().toISOString().split("T")[0],
+        }),
       });
 
       if (!response.ok) {
@@ -403,7 +415,9 @@ class LocationIntelligenceService {
 
       // Map API response to risk factors
       return {
-        overallRisk: Math.round((data.flood + data.drought + data.heatwave + data.wildfire) / 4),
+        overallRisk: Math.round(
+          (data.flood + data.drought + data.heatwave + data.wildfire) / 4
+        ),
         riskFactors: {
           flooding: Math.round(data.flood || 0),
           heatWave: Math.round(data.heatwave || 0),
@@ -427,7 +441,7 @@ class LocationIntelligenceService {
     // Coastal regions (near ocean) have higher sea level risk
     // This is a simplified approximation - in production, use elevation data
     const coastalThreshold = 5; // degrees from coast approximation
-    
+
     // Major coastal risk zones
     const highRiskCoasts = [
       { lat: 40.7, lon: -74.0, radius: 2 }, // NYC
@@ -438,7 +452,8 @@ class LocationIntelligenceService {
 
     for (const coast of highRiskCoasts) {
       const distance = this.calculateDistance(lat, lon, coast.lat, coast.lon);
-      if (distance < coast.radius * 100) { // Convert to km
+      if (distance < coast.radius * 100) {
+        // Convert to km
         return 80 + Math.random() * 15; // 80-95
       }
     }
@@ -454,7 +469,10 @@ class LocationIntelligenceService {
   /**
    * Get geographic-based risk estimates as fallback
    */
-  private getGeographicRiskEstimates(lat: number, lon: number): {
+  private getGeographicRiskEstimates(
+    lat: number,
+    lon: number
+  ): {
     overallRisk: number;
     riskFactors: {
       flooding: number;
@@ -466,7 +484,7 @@ class LocationIntelligenceService {
     };
   } {
     // Desert regions (SW US, etc.)
-    if ((lat > 30 && lat < 40) && (lon < -100 && lon > -120)) {
+    if (lat > 30 && lat < 40 && lon < -100 && lon > -120) {
       return {
         overallRisk: 75,
         riskFactors: {
@@ -512,7 +530,11 @@ class LocationIntelligenceService {
   /**
    * Count nearby alerts within radius
    */
-  private async countNearbyAlerts(lat: number, lon: number, radiusKm: number = 50): Promise<number> {
+  private async countNearbyAlerts(
+    lat: number,
+    lon: number,
+    radiusKm: number = 50
+  ): Promise<number> {
     try {
       // In production, query alert database for nearby alerts
       // For now, return 0 as we'd need to integrate with alert service
@@ -526,41 +548,60 @@ class LocationIntelligenceService {
   /**
    * Generate smart recommendations based on REAL risk factors
    */
-  private generateSmartRecommendations(riskFactors: any, nearbyAlerts: number): string[] {
+  private generateSmartRecommendations(
+    riskFactors: any,
+    nearbyAlerts: number
+  ): string[] {
     const recommendations: string[] = [];
     const risks = Object.entries(riskFactors) as [string, number][];
     const highRisks = risks.filter(([, value]) => value > 70);
 
     // High-risk specific recommendations
     if (riskFactors.heatWave > 70) {
-      recommendations.push("⚠️ HEAT: Stay hydrated, avoid outdoor activities during peak hours (10am-4pm)");
+      recommendations.push(
+        "⚠️ HEAT: Stay hydrated, avoid outdoor activities during peak hours (10am-4pm)"
+      );
     }
     if (riskFactors.flooding > 70) {
-      recommendations.push("🌊 FLOOD: Prepare emergency evacuation kit, know your evacuation routes");
+      recommendations.push(
+        "🌊 FLOOD: Prepare emergency evacuation kit, know your evacuation routes"
+      );
     }
     if (riskFactors.wildfire > 70) {
-      recommendations.push("🔥 WILDFIRE: Create defensible space around property, monitor air quality");
+      recommendations.push(
+        "🔥 WILDFIRE: Create defensible space around property, monitor air quality"
+      );
     }
     if (riskFactors.drought > 70) {
-      recommendations.push("💧 DROUGHT: Implement water conservation measures, install low-flow fixtures");
+      recommendations.push(
+        "💧 DROUGHT: Implement water conservation measures, install low-flow fixtures"
+      );
     }
     if (riskFactors.airQuality > 70) {
-      recommendations.push("😷 AIR: Limit outdoor exposure, use N95 masks, run air purifiers indoors");
+      recommendations.push(
+        "😷 AIR: Limit outdoor exposure, use N95 masks, run air purifiers indoors"
+      );
     }
     if (riskFactors.seaLevelRise > 70) {
-      recommendations.push("🌊 COASTAL: Consider flood insurance, elevate valuables, emergency supplies");
+      recommendations.push(
+        "🌊 COASTAL: Consider flood insurance, elevate valuables, emergency supplies"
+      );
     }
 
     // General recommendations
     if (recommendations.length === 0) {
-      recommendations.push("✅ Maintain emergency supplies kit with 72 hours of essentials");
+      recommendations.push(
+        "✅ Maintain emergency supplies kit with 72 hours of essentials"
+      );
       recommendations.push("📱 Download emergency alert apps for your region");
       recommendations.push("🏠 Review and update your home insurance coverage");
     }
 
     // Nearby alerts warning
     if (nearbyAlerts > 0) {
-      recommendations.unshift(`🚨 ${nearbyAlerts} active climate alert(s) in your area - stay informed!`);
+      recommendations.unshift(
+        `🚨 ${nearbyAlerts} active climate alert(s) in your area - stay informed!`
+      );
     }
 
     return recommendations.slice(0, 5); // Return top 5 recommendations
@@ -594,8 +635,6 @@ class LocationIntelligenceService {
       lastUpdated: new Date(),
     };
   }
-
-
 
   /**
    * Get current location and risk assessment
