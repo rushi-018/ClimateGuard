@@ -25,13 +25,6 @@ export function Navbar() {
             <span>Dashboard</span>
           </Link>
           <Link
-            href="/global"
-            className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Globe className="w-4 h-4" />
-            <span>Global View</span>
-          </Link>
-          <Link
             href="/about"
             className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors"
           >
