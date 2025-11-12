@@ -362,34 +362,18 @@ export function ActionList({ risks = [], location, className }: ActionListProps)
                           )}
                         </div>
 
-                        {/* Progress Bar */}
-                        <div className="mb-3">
-                          <div className="flex justify-between text-xs mb-1">
-                            <span>Implementation Progress</span>
-                            <span>{action.effectiveness}%</span>
-                          </div>
-                          <Progress value={action.effectiveness} className="h-1" />
-                        </div>
-
-                        {/* Resources & Action Button */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex flex-wrap gap-1">
-                            {action.resources.slice(0, 3).map((resource, i) => (
-                              <Badge key={i} variant="outline" className="text-xs">
-                                {resource}
-                              </Badge>
-                            ))}
-                            {action.resources.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{action.resources.length - 3} more
-                              </Badge>
-                            )}
-                          </div>
-                          
-                          <Button size="sm" variant="outline" className="text-xs">
-                            Deploy Action
-                            <ArrowRight className="w-3 h-3 ml-1" />
-                          </Button>
+                        {/* Resources */}
+                        <div className="flex flex-wrap gap-1">
+                          {action.resources.slice(0, 3).map((resource, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">
+                              {resource}
+                            </Badge>
+                          ))}
+                          {action.resources.length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{action.resources.length - 3} more
+                            </Badge>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
