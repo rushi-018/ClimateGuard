@@ -62,6 +62,7 @@ export function AdaptationDashboard({ location }: AdaptationDashboardProps) {
     markActionComplete,
     markActionIncomplete,
     regeneratePlan,
+    clearPlan,
   } = useAdaptationPlan(location);
 
   // Only show onboarding if explicitly set OR if no plan exists after loading
@@ -70,6 +71,12 @@ export function AdaptationDashboard({ location }: AdaptationDashboardProps) {
   const handleOnboardingComplete = async (profile: UserProfile) => {
     await createPlan(profile);
     setShowOnboarding(false);
+  };
+
+  const handleCreateNewPlan = () => {
+    // Clear existing plan and show onboarding
+    clearPlan();
+    setShowOnboarding(true);
   };
 
   // If user hasn't completed onboarding AND no plan exists, show the questionnaire
@@ -152,10 +159,16 @@ export function AdaptationDashboard({ location }: AdaptationDashboardProps) {
                 {plan.lastUpdated.toLocaleDateString()}
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={regeneratePlan} disabled={isGenerating}>
-              <RefreshCcw className="h-4 w-4 mr-2" />
-              Regenerate
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={regeneratePlan} disabled={isGenerating}>
+                <RefreshCcw className="h-4 w-4 mr-2" />
+                Regenerate
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleCreateNewPlan}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                New Plan
+              </Button>
+            </div>
           </div>
         </CardHeader>
 

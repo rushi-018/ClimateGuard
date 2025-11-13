@@ -385,6 +385,7 @@ export function useAdaptationPlan(location?: {
     markActionIncomplete,
     resetPlan,
     regeneratePlan,
+    clearPlan: resetPlan, // Alias for better clarity
 
     // Getters
     getUrgentActions,
